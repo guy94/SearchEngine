@@ -18,7 +18,12 @@ def run_engine():
     p = Parse()
     indexer = Indexer(config)
 
-    documents_list = r.read_file(file_name='sample3.parquet')
+    # corpus_list = r.read_corpus()
+    # for i in range(len(corpus_list)):
+    # documents_list = r.read_file(file_name=corpus_list[i])
+
+    documents_list = r.read_file(file_name="sample3.parquet")
+    print(documents_list[0])
     # Iterate over every document in the file
     for idx, document in enumerate(documents_list):
         # parse the document
