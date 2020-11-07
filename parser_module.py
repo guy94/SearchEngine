@@ -46,8 +46,8 @@ class Parse:
         tokenized_at = self.parse_at()  #: @ Sign
         tokenized_hashtag = self.parse_hashtag()  #: # Sign
         tokenized_url = self.parse_url("https://www.instagram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")  #: url break up
-        tokenized_percntage = self.parse_percent(" i have 6 percent of my money 6.5%")
-        tokenized_int = self.parse_Int("i work sence 1975 evey day 152,656 and 55 Million")
+        tokenized_percentage = self.parse_percent(" i have 6 percent of my money 6.5%")  #: percentage -> %
+        tokenized_int = self.parse_numbers("i work since 1,975 thousands evey 55 day 152,656 and 44, 34 Thousands 55.56 Million")  #: nums (123,000 -> 123k)
 
         #############################
 
@@ -117,48 +117,54 @@ class Parse:
         tokenized_url = word_tokenize(text)
         for d in only_decimal:
             j = tokenized_url.index(d)
-            if tokenized_url[j + 1] == '%' or  tokenized_url[j + 1] == 'percent' or tokenized_url[j + 1] == 'percentage':
+            if tokenized_url[j + 1] == '%' or tokenized_url[j + 1] == 'percent' or tokenized_url[j + 1] == 'percentage':
                 textAsAList.append(d+'%')
 
         return textAsAList
 
-    def parse_Int(self, text):
+    def parse_numbers(self, text):
 
         text_as_list = []
-        only_decimal = re.findall('\d*\.?\d+', text)
+        only_decimals = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", text)
         tokenized_url = word_tokenize(text)
-        for d in only_decimal:
+        for d in only_decimals:
+            d_no_commas = re.sub("[^\d\.]", "", d)
             j = tokenized_url.index(d)
-            index_exist_before = self.index_exists(tokenized_url,j-1)
-            index_exist_after = self.index_exists(tokenized_url,j+1)
+            index_exist_before = self.index_exists(tokenized_url, j-1)
+            index_exist_after = self.index_exists(tokenized_url, j+1)
 
             if ((index_exist_after and (tokenized_url[j + 1] is not '%' and tokenized_url[j + 1] is not '$')) or
                 (index_exist_before and (tokenized_url[j - 1] != '%' or tokenized_url[j - 1] != '$'))):
-                num_in_decimal = Decimal(d.replace(',','.'))
+                if "." in d_no_commas:
+                    d_as_number = float(d_no_commas)
+
+                else:
+                    d_as_number = int(d_no_commas)
+
+                # num_in_decimal = Decimal(d.replace(',', '.'))
                 strep = ''
-                if num_in_decimal < 1000:
-                    if index_exist_after and tokenized_url[j + 1] == "Thousands":
-                        strep = str(num_in_decimal) + 'K'
-                    elif index_exist_after and tokenized_url[j + 1] == "Million":
-                        strep = str(num_in_decimal) + 'M'
-                    elif index_exist_after and tokenized_url[j + 1] == "Billion":
-                        strep = str(num_in_decimal) + 'B'
+                if d_as_number < 1000:
+                    if index_exist_after and (tokenized_url[j + 1] == "Thousands" or tokenized_url[j + 1] == "Thousand"):
+                        strep = str(d_as_number) + 'K'
+                    elif index_exist_after and (tokenized_url[j + 1] == "Millions" or tokenized_url[j + 1] == "Million"):
+                        strep = str(d_as_number) + 'M'
+                    elif index_exist_after and (tokenized_url[j + 1] == "Billions" or tokenized_url[j + 1] == "Billion"):
+                        strep = str(d_as_number) + 'B'
                     else:
-                        strep = str(num_in_decimal)
-                elif num_in_decimal < 1000000:
-                    numrep = num_in_decimal / 1000
+                        strep = str(d_as_number)
+                elif d_as_number < 1000000:
+                    numrep = d_as_number / 1000
                     strep = str(numrep) + 'K'
-                elif 1000000 < num_in_decimal < 1000000000:
-                    numrep = num_in_decimal / 1000000
+                elif 1000000 < d_as_number < 1000000000:
+                    numrep = d_as_number / 1000000
                     strep = str(numrep) + 'M'
-                elif num_in_decimal > 1000000000:
-                    numrep = num_in_decimal / 1000000000
+                elif d_as_number > 1000000000:
+                    numrep = d_as_number / 1000000000
                     strep = str(numrep) + 'B'
 
                 print(strep)
                 if strep != '':
                     text_as_list.append(strep)
-
 
         return text_as_list
 
