@@ -7,6 +7,8 @@ import re
 
 class Parse:
 
+    term_appearance_dict = {}
+
     def __init__(self):
         self.stop_words = stopwords.words('english')
         self.tokens = None
@@ -40,14 +42,26 @@ class Parse:
         tokenized_text = self.parse_sentence(full_text)
 
         #############################
-
-
-        for token in self.tokens:
+        url_lst = self.parse_url_text("https://www.inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
+        for i, token in enumerate(self.tokens):
+            parsed_token_list = []
+            url_from_text = ""
             parsed_token = ''
+            if re.search("(?P<url>https?://[^\s]+)", token) is not None:
+                url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
+            number_as_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", "140")
+
             if token.startswith('@'):
                 parsed_token = token
-            if token.startswith('#'):
-                parsed_token = self.parse_hashtag(token)
+
+            elif token.startswith('#'):
+                parsed_token_list = self.parse_hashtag(token)
+
+            elif url_from_text != "":
+                tokenized_urls = self.parse_url_text(url_from_text)
+
+            elif len(number_as_list) != 0:
+                self.parse_numbers(number_as_list[0])
 
             if parsed_token != '':
                 if parsed_token not in term_dict.keys():
@@ -72,56 +86,44 @@ class Parse:
                             quote_url, term_dict, doc_length)
         return document
 
-    def parse_at(self, token):
-        tokens_with_at = []
-        # for i in range(len(self.tokens) - 1):
-        #     if self.tokens[i][0] is '@':
-        word_to_add = self.tokens[i][0] + self.tokens[i + 1]
-        tokens_with_at.append(word_to_add)
-        return tokens_with_at
+    # def parse_at(self, token):
+    #     tokens_with_at = []
+    #     # for i in range(len(self.tokens) - 1):
+    #     #     if self.tokens[i][0] is '@':
+    #     word_to_add = self.tokens[i][0] + self.tokens[i + 1]
+    #     tokens_with_at.append(word_to_add)
+    #     return tokens_with_at
 
     def parse_hashtag(self, token):
         tokens_with_hashtag = []
-        for i in range(len(self.tokens) - 1):
-            if self.tokens[i][0] is '#':
-                word_to_add = self.tokens[i][0] + self.tokens[i + 1]
-                tokens_with_hashtag.append(word_to_add)
-
-                broken_hashtag = ([a for a in re.split(r'([A-Z][a-z]*)', self.tokens[i + 1]) if a])  # breaking the
-                # hashtagged word to words
-                # and lower case them
-                for j in range(len(broken_hashtag)):
-                    tokens_with_hashtag.append(broken_hashtag[j].lower())
+        tokens_with_hashtag.append(token.lower())
+        token = token.split("#")[1]
+        tokens_with_hashtag.extend(([a.lower() for a in re.split(r'([A-Z]*[a-z]*)', token) if a]))
 
         return tokens_with_hashtag
 
-    # def parse_url(self, url):
-    #     no_delimeters_tokens = []
-    #     tokenized_url = word_tokenize(url)
-    #
-    #     for h in range(len(tokenized_url) - 1):  # extracts the domain: www.instagram.com......
-    #         if "www." in tokenized_url[h]:
-    #             domain = tokenized_url.pop(h)
-    #             parsed_domain = domain.split("//www.")
-    #             parsed_domain.pop(0)
-    #             str_lst = re.split('[/=:?#]', parsed_domain[0])
-    #             no_delimeters_tokens.extend(str_lst)
-    #
-    #     for i in range(len(tokenized_url)):  # processes the rest of the url
-    #         str_lst = re.split('[/=:?#]', tokenized_url[i])
-    #         no_delimeters_tokens.extend(str_lst)
-    #
-    #     tokenized_url.clear()
-    #     tokenized_url.append("www")
-    #     for k in range(len(no_delimeters_tokens)):  # eliminates empty "" ("" is part of split())
-    #         if no_delimeters_tokens[k] is not "":
-    #             tokenized_url.append(no_delimeters_tokens[k])
-    #
-    #     return tokenized_url
+    def parse_url_text(self, token):
+        domain = re.findall(r'(www\.)?(\w+-?\w+)(\.\w+)', token)
+        tokenize_url = re.split('[/=:?#]', token)
+        domain_as_list = [item for t in domain for item in t]
+        domain_no_www = domain_as_list[1] + domain_as_list[2]
 
-    def parse_url_text(self, index):
+        if domain_as_list[0] == "www.":
+            index = tokenize_url.index(domain_as_list[0] + domain_no_www)
+            tokenize_url.pop(index)
+            tokenize_url.insert(index, "www")
+            tokenize_url.insert(index + 1, domain_no_www)
+        else:
+            index = tokenize_url.index(domain_no_www)
+            tokenize_url.pop(index)
+            tokenize_url.insert(index, domain_no_www)
 
+        to_return = []
+        for i in range(len(tokenize_url)):
+            if tokenize_url[i] != "":
+                to_return.append(tokenize_url[i])
 
+        return to_return
 
     def parse_percent(self, text):
 
