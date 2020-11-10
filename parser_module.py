@@ -42,26 +42,25 @@ class Parse:
         tokenized_text = self.parse_sentence(full_text)
 
         #############################
-        url_lst = self.parse_url_text("https://www.inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
+        url_lst = self.parse_url_text("https://inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
         for i, token in enumerate(self.tokens):
-            parsed_token_list = []
             url_from_text = ""
             parsed_token = ''
             if re.search("(?P<url>https?://[^\s]+)", token) is not None:
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
             number_as_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", "140")
 
-            if token.startswith('@'):
+            if token.startswith('@'):  #: @ sign
                 parsed_token = token
 
-            elif token.startswith('#'):
+            elif token.startswith('#'):  #: # sign
                 parsed_token_list = self.parse_hashtag(token)
 
-            elif url_from_text != "":
-                tokenized_urls = self.parse_url_text(url_from_text)
+            elif url_from_text != "":  #: url
+                parsed_token_list = self.parse_url_text(url_from_text)
 
-            elif len(number_as_list) != 0:
-                self.parse_numbers(number_as_list[0])
+            elif len(number_as_list) != 0:  #: numbers
+                parsed_token = self.parse_numbers(number_as_list[0])
 
             if parsed_token != '':
                 if parsed_token not in term_dict.keys():
@@ -95,28 +94,21 @@ class Parse:
     #     return tokens_with_at
 
     def parse_hashtag(self, token):
-        tokens_with_hashtag = []
-        tokens_with_hashtag.append(token.lower())
+        tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
         tokens_with_hashtag.extend(([a.lower() for a in re.split(r'([A-Z]*[a-z]*)', token) if a]))
 
         return tokens_with_hashtag
 
     def parse_url_text(self, token):
-        domain = re.findall(r'(www\.)?(\w+-?\w+)(\.\w+)', token)
+        domain = list(re.findall(r'(www\.)?(\w+-?\w+)(\.\w+)', token)[0])
         tokenize_url = re.split('[/=:?#]', token)
-        domain_as_list = [item for t in domain for item in t]
-        domain_no_www = domain_as_list[1] + domain_as_list[2]
+        domain_no_www = domain[1] + domain[2]
 
-        if domain_as_list[0] == "www.":
-            index = tokenize_url.index(domain_as_list[0] + domain_no_www)
-            tokenize_url.pop(index)
-            tokenize_url.insert(index, "www")
-            tokenize_url.insert(index + 1, domain_no_www)
-        else:
-            index = tokenize_url.index(domain_no_www)
-            tokenize_url.pop(index)
-            tokenize_url.insert(index, domain_no_www)
+        index = tokenize_url.index(domain[0] + domain_no_www)
+        tokenize_url.pop(index)
+        tokenize_url.insert(index, domain[0].split(".")[0])
+        tokenize_url.insert(index + 1, domain_no_www)
 
         to_return = []
         for i in range(len(tokenize_url)):

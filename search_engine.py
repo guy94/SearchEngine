@@ -30,7 +30,7 @@ def run_engine():
     # Iterate over every document in the file
     for idx, document in enumerate(documents_list):
         # parse the document
-        # print(documents_list[idx])
+        print(documents_list[idx])
         parsed_document = p.parse_doc(document)
         number_of_documents += 1
         # index the document data
