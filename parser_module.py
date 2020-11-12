@@ -41,17 +41,15 @@ class Parse:
         tokenized_text = self.parse_sentence(full_text)
 
         #############################
-        # url_lst = self.parse_url_text("https://inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
-        self.tes_func()
+        # self.tes_func()
         for i, token in enumerate(self.tokens):
             url_from_text = ""
             parsed_token = ''
             if re.search("(?P<url>https?://[^\s]+)", token) is not None:
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
-            number_as_list = re.findall("[-+]?[\d]+[.[\d]+]?/[-+]?[-+]?[\d]+[.[\d]+]?", token)  # numbers like 3/5
-            if len(number_as_list) == 0:
-                number_as_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", token)
 
+            number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
+                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", token)
 
             if token.startswith('@'):  #: @ sign
                 parsed_token = token
@@ -73,10 +71,6 @@ class Parse:
                     term_dict[parsed_token] = 1
                 else:
                     term_dict[parsed_token] += 1
-
-        # tokenized_url = self.parse_url("https://www.instagram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")  #: url break up
-        tokenized_percentage = self.parse_percent(" i have 6 percent of my money 6.5%")  #: percentage -> %
-        tokenized_int = self.parse_numbers("i work since 1,975 thousands evey 55 day 152,656 and 44, 34 Thousands 55.56 Million")  #: nums (123,000 -> 123k)
         #############################
 
         doc_length = len(tokenized_text)  # after text operations.
@@ -115,32 +109,41 @@ class Parse:
 
         return to_return
 
-    def parse_percent(self, text):
-
-        textAsAList = []
-        only_decimal = re.findall('\d*\.?\d+', text)
-        tokenized_url = word_tokenize(text)
-        for d in only_decimal:
-            j = tokenized_url.index(d)
-            if tokenized_url[j + 1] == '%' or tokenized_url[j + 1] == 'percent' or tokenized_url[j + 1] == 'percentage':
-                textAsAList.append(d+'%')
-
-        return textAsAList
-
     def parse_numbers(self, number_as_str, word=None):
         str_no_commas = re.sub("[^\d\./]", "", number_as_str)
+        signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
+                 '%': '%'}
+        quantities = ["thousands", "thousand", "millions", "million", "billions", "billion"]
 
-        strep = ''
         if word is not None:
-            if word != '%' and word != '$':
-                if "." or "/" in str_no_commas:
-                    as_number = float("{:.3f}".format(float(str_no_commas)))
+            word = word.lower()
 
-                else:
-                    as_number = int(str_no_commas)
+        if "/" in str_no_commas:
+            num, denum = str_no_commas.split('/')
+            as_number = float(num) / float(denum)
+        elif "." in str_no_commas:
+            as_number = float("{:.3f}".format(float(str_no_commas)))
+        else:
+            as_number = int(str_no_commas)
+        strep = ''
+        if word is None or (word not in signs and word not in quantities):
 
-                word = word.lower()
+            if as_number < 1000:
+                strep = str(as_number)
+            elif as_number < 1000000:
+                strep = str(as_number / 1000) + 'K'
+            elif 1000000 < as_number < 1000000000:
+                strep = str(as_number / 1000000) + 'M'
+            elif as_number > 1000000000:
+                strep = str(as_number / 1000000000) + 'B'
 
+            return strep
+
+        else:
+            if word in signs:  # looks for signs like $ %
+                strep = str(as_number) + signs[word]
+
+            elif word in quantities:  # thousand, million etc.
                 if word == "thousands" or word == "thousand":
                     if as_number < 1000:
                         strep = str(as_number) + 'K'
@@ -156,37 +159,31 @@ class Parse:
                 elif word == "billions" or word == "billion":
                     strep = str(as_number) + 'B'
 
-        else:
-            if "." or "/" in str_no_commas:
-                as_number = float("{:.3f}".format(float(str_no_commas)))
-
-            else:
-                as_number = int(str_no_commas)
-
-            if as_number < 1000:
-                strep = str(as_number)
-            elif as_number < 1000000:
-                strep = str(as_number / 1000) + 'K'
-            elif 1000000 < as_number < 1000000000:
-                strep = str(as_number / 1000000) + 'M'
-            elif as_number > 1000000000:
-                strep = str(as_number / 1000000000) + 'B'
-
         return strep
-
 
     def tes_func(self):
 
         s1 = "50.564564545"
         s2 = "50,466.55565656"
         s3 = "3/5"
-        num3 = re.findall("[-+]?[\d]+[.[\d]+]?/[-+]?[-+]?[\d]+[.[\d]+]?", s3)
-        if len(num3) == 0:
-            num3 = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s2)[0]
+        s4 = "53.55"
+        s5 = "percent"
+        s6 = "PerCentage"
+        s7 = "%"
+        s8 = "$"
+        s9 = "5.23/4"
+        s10 = "1500"
+        num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
+                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
 
-        lst = [s1, s2, s3]
+        print(self.parse_numbers(s1))
+        print(self.parse_numbers(s2, "million"))
+        print(self.parse_numbers(num3))
+        print(self.parse_numbers(s4, s5))
+        print(self.parse_numbers(s4, s6))
+        print(self.parse_numbers(s9, s7))
+        print(self.parse_numbers(s2, s5))
+        print(self.parse_numbers(s10, "milliOn"))
 
-        # print(self.parse_numbers(s1))
-        # print(self.parse_numbers(s2, "million"))
-        print(self.parse_numbers(num3[0]))
+        x = 9
 
