@@ -6,7 +6,7 @@ import re
 
 class Parse:
 
-    term_appearance_dict = {}
+    capital_letter_dict = {}
 
     def __init__(self):
         self.stop_words = stopwords.words('english')
@@ -51,6 +51,9 @@ class Parse:
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
                           "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", token)
 
+            if token.isalpha():  #: capital letters
+                self.check_if_capital(token)
+
             if token.startswith('@'):  #: @ sign
                 parsed_token = token
 
@@ -65,6 +68,9 @@ class Parse:
                     parsed_token = self.parse_numbers(number_as_list[0], self.tokens[i + 1])
                 else:
                     parsed_token = self.parse_numbers(number_as_list[0])
+
+            self.check_if_capital(token)
+
 
             if parsed_token != '':
                 if parsed_token not in term_dict.keys():
@@ -84,6 +90,22 @@ class Parse:
         document = Document(tweet_id, tweet_date, full_text, url, retweet_text, retweet_url, quote_text,
                             quote_url, term_dict, doc_length)
         return document
+
+
+    def check_if_capital(self, token):  # counting may be unnescesary
+        rest_of_token = token[1:].upper()
+        token = token[0] + rest_of_token
+        if token.isupper():
+            if token in Parse.capital_letter_dict:
+                Parse.capital_letter_dict[token][1] += 1
+            else:
+                Parse.capital_letter_dict[token] = [True, 1]
+        else:
+            new_word = token.upper()  # title
+            if new_word in Parse.capital_letter_dict:
+                Parse.capital_letter_dict[new_word][0] = False
+                Parse.capital_letter_dict[new_word][1] += 1
+
 
     def parse_hashtag(self, token):
         tokens_with_hashtag = [token.lower()]
@@ -162,28 +184,39 @@ class Parse:
         return strep
 
     def tes_func(self):
+        self.check_if_capital("FirSt")
+        self.check_if_capital("FirSt")
+        self.check_if_capital("FirSt")
+        self.check_if_capital("FirSt")
+        self.check_if_capital("firST")
+        self.check_if_capital("FIRST")
+        self.check_if_capital("FIRST")
+        self.check_if_capital("NBA")
+        self.check_if_capital("NBA")
+        self.check_if_capital("gsw")
+        self.check_if_capital("GsW")
 
-        s1 = "50.564564545"
-        s2 = "50,466.55565656"
-        s3 = "3/5"
-        s4 = "53.55"
-        s5 = "percent"
-        s6 = "PerCentage"
-        s7 = "%"
-        s8 = "$"
-        s9 = "5.23/4"
-        s10 = "1500"
-        num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
-                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
-
-        print(self.parse_numbers(s1))
-        print(self.parse_numbers(s2, "million"))
-        print(self.parse_numbers(num3))
-        print(self.parse_numbers(s4, s5))
-        print(self.parse_numbers(s4, s6))
-        print(self.parse_numbers(s9, s7))
-        print(self.parse_numbers(s2, s5))
-        print(self.parse_numbers(s10, "milliOn"))
-
-        x = 9
+        # s1 = "50.564564545"
+        # s2 = "50,466.55565656"
+        # s3 = "3/5"
+        # s4 = "53.55"
+        # s5 = "percent"
+        # s6 = "PerCentage"
+        # s7 = "%"
+        # s8 = "$"
+        # s9 = "5.23/4"
+        # s10 = "1500"
+        # num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
+        #                   "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
+        #
+        # print(self.parse_numbers(s1))
+        # print(self.parse_numbers(s2, "million"))
+        # print(self.parse_numbers(num3))
+        # print(self.parse_numbers(s4, s5))
+        # print(self.parse_numbers(s4, s6))
+        # print(self.parse_numbers(s9, s7))
+        # print(self.parse_numbers(s2, s5))
+        # print(self.parse_numbers(s10, "milliOn"))
+        #
+        # x = 9
 
