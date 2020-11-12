@@ -25,16 +25,14 @@ def run_engine():
     # for i in range(len(corpus_list)):
     documents_list = r.read_file(file_name=corpus_list[0])
 
-    # documents_list = r.read_file(file_name="sample3.parquet")
-
     # Iterate over every document in the file
     for idx, document in enumerate(documents_list):
-        # parse the document
-        print(documents_list[idx])
+    #     # parse the document
+    #     print(documents_list[idx])
         parsed_document = p.parse_doc(document)
         number_of_documents += 1
-        # index the document data
-        indexer.add_new_doc(parsed_document)
+    #     # index the document data
+    #     indexer.add_new_doc(parsed_document)
 
     end = time.time()
     print(end - start)

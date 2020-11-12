@@ -1,7 +1,6 @@
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from document import Document
-from decimal import Decimal
 import re
 
 
@@ -42,13 +41,17 @@ class Parse:
         tokenized_text = self.parse_sentence(full_text)
 
         #############################
-        url_lst = self.parse_url_text("https://inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
+        # url_lst = self.parse_url_text("https://inst-agram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x")
+        self.tes_func()
         for i, token in enumerate(self.tokens):
             url_from_text = ""
             parsed_token = ''
             if re.search("(?P<url>https?://[^\s]+)", token) is not None:
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
-            number_as_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", "140")
+            number_as_list = re.findall("[-+]?[\d]+[.[\d]+]?/[-+]?[-+]?[\d]+[.[\d]+]?", token)  # numbers like 3/5
+            if len(number_as_list) == 0:
+                number_as_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", token)
+
 
             if token.startswith('@'):  #: @ sign
                 parsed_token = token
@@ -60,7 +63,10 @@ class Parse:
                 parsed_token_list = self.parse_url_text(url_from_text)
 
             elif len(number_as_list) != 0:  #: numbers
-                parsed_token = self.parse_numbers(number_as_list[0])
+                if i < len(self.tokens) - 1:
+                    parsed_token = self.parse_numbers(number_as_list[0], self.tokens[i + 1])
+                else:
+                    parsed_token = self.parse_numbers(number_as_list[0])
 
             if parsed_token != '':
                 if parsed_token not in term_dict.keys():
@@ -84,14 +90,6 @@ class Parse:
         document = Document(tweet_id, tweet_date, full_text, url, retweet_text, retweet_url, quote_text,
                             quote_url, term_dict, doc_length)
         return document
-
-    # def parse_at(self, token):
-    #     tokens_with_at = []
-    #     # for i in range(len(self.tokens) - 1):
-    #     #     if self.tokens[i][0] is '@':
-    #     word_to_add = self.tokens[i][0] + self.tokens[i + 1]
-    #     tokens_with_at.append(word_to_add)
-    #     return tokens_with_at
 
     def parse_hashtag(self, token):
         tokens_with_hashtag = [token.lower()]
@@ -129,54 +127,66 @@ class Parse:
 
         return textAsAList
 
-    def parse_numbers(self, text):
+    def parse_numbers(self, number_as_str, word=None):
+        str_no_commas = re.sub("[^\d\./]", "", number_as_str)
 
-        text_as_list = []
-        only_decimals = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", text)
-        tokenized_url = word_tokenize(text)
-        for d in only_decimals:
-            d_no_commas = re.sub("[^\d\.]", "", d)
-            j = tokenized_url.index(d)
-            index_exist_before = self.index_exists(tokenized_url, j-1)
-            index_exist_after = self.index_exists(tokenized_url, j+1)
-
-            if ((index_exist_after and (tokenized_url[j + 1] is not '%' and tokenized_url[j + 1] is not '$')) or
-                (index_exist_before and (tokenized_url[j - 1] != '%' or tokenized_url[j - 1] != '$'))):
-                if "." in d_no_commas:
-                    d_as_number = float(d_no_commas)
+        strep = ''
+        if word is not None:
+            if word != '%' and word != '$':
+                if "." or "/" in str_no_commas:
+                    as_number = float("{:.3f}".format(float(str_no_commas)))
 
                 else:
-                    d_as_number = int(d_no_commas)
+                    as_number = int(str_no_commas)
 
-                # num_in_decimal = Decimal(d.replace(',', '.'))
-                strep = ''
-                if d_as_number < 1000:
-                    if index_exist_after and (tokenized_url[j + 1] == "Thousands" or tokenized_url[j + 1] == "Thousand"):
-                        strep = str(d_as_number) + 'K'
-                    elif index_exist_after and (tokenized_url[j + 1] == "Millions" or tokenized_url[j + 1] == "Million"):
-                        strep = str(d_as_number) + 'M'
-                    elif index_exist_after and (tokenized_url[j + 1] == "Billions" or tokenized_url[j + 1] == "Billion"):
-                        strep = str(d_as_number) + 'B'
+                word = word.lower()
+
+                if word == "thousands" or word == "thousand":
+                    if as_number < 1000:
+                        strep = str(as_number) + 'K'
+                    elif as_number < 1000000:
+                        strep = str(as_number / 1000) + 'M'
                     else:
-                        strep = str(d_as_number)
-                elif d_as_number < 1000000:
-                    numrep = d_as_number / 1000
-                    strep = str(numrep) + 'K'
-                elif 1000000 < d_as_number < 1000000000:
-                    numrep = d_as_number / 1000000
-                    strep = str(numrep) + 'M'
-                elif d_as_number > 1000000000:
-                    numrep = d_as_number / 1000000000
-                    strep = str(numrep) + 'B'
+                        strep = str(as_number / 1000000) + 'B'
+                elif word == "millions" or word == "million":
+                    if as_number < 1000:
+                        strep = str(as_number) + 'M'
+                    elif as_number < 1000000:
+                        strep = str(as_number / 1000) + 'B'
+                elif word == "billions" or word == "billion":
+                    strep = str(as_number) + 'B'
 
-                # print(strep)
-                if strep != '':
-                    text_as_list.append(strep)
+        else:
+            if "." or "/" in str_no_commas:
+                as_number = float("{:.3f}".format(float(str_no_commas)))
 
-        return text_as_list
+            else:
+                as_number = int(str_no_commas)
 
-    def index_exists(self, ls, i):
-        return (0 <= i < len(ls)) or (-len(ls) <= i < 0)
+            if as_number < 1000:
+                strep = str(as_number)
+            elif as_number < 1000000:
+                strep = str(as_number / 1000) + 'K'
+            elif 1000000 < as_number < 1000000000:
+                strep = str(as_number / 1000000) + 'M'
+            elif as_number > 1000000000:
+                strep = str(as_number / 1000000000) + 'B'
+
+        return strep
 
 
+    def tes_func(self):
+
+        s1 = "50.564564545"
+        s2 = "50,466.55565656"
+        s3 = "3/5"
+        num3 = re.findall("[-+]?[\d]+[.[\d]+]?/[-+]?[-+]?[\d]+[.[\d]+]?", s3)
+        if len(num3) == 0:
+            num3 = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s2)[0]
+
+        lst = [s1, s2, s3]
+
+        # print(self.parse_numbers(s1))
+        # print(self.parse_numbers(s2, "million"))
+        print(self.parse_numbers(num3[0]))
 
