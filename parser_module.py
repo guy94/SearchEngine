@@ -1,7 +1,10 @@
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from document import Document
+from urllib.parse import urlparse
 import re
+import spacy
+from spacy import displacy
 
 
 class Parse:
@@ -41,6 +44,7 @@ class Parse:
         tokenized_text = self.parse_sentence(full_text)
 
         #############################
+        self.parse_entities("ii")
         # self.tes_func()
         for i, token in enumerate(self.tokens):
             url_from_text = ""
@@ -115,14 +119,18 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, token):
-        domain = list(re.findall(r'(www\.)?(\w+-?\w+)(\.\w+)', token)[0])
+        # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
+        domain = urlparse(token).netloc
         tokenize_url = re.split('[/=:?#]', token)
-        domain_no_www = domain[1] + domain[2]
+        index = tokenize_url.index(domain)
+        www_str = ''
+        if "www." in domain:
+            domain = domain[4:]
+            www_str = "www"
 
-        index = tokenize_url.index(domain[0] + domain_no_www)
         tokenize_url.pop(index)
-        tokenize_url.insert(index, domain[0].split(".")[0])
-        tokenize_url.insert(index + 1, domain_no_www)
+        tokenize_url.insert(index, www_str)
+        tokenize_url.insert(index + 1, domain)
 
         to_return = []
         for i in range(len(tokenize_url)):
@@ -183,19 +191,37 @@ class Parse:
 
         return strep
 
-    def tes_func(self):
-        self.check_if_capital("FirSt")
-        self.check_if_capital("FirSt")
-        self.check_if_capital("FirSt")
-        self.check_if_capital("FirSt")
-        self.check_if_capital("firST")
-        self.check_if_capital("FIRST")
-        self.check_if_capital("FIRST")
-        self.check_if_capital("NBA")
-        self.check_if_capital("NBA")
-        self.check_if_capital("gsw")
-        self.check_if_capital("GsW")
+    def parse_entities(self, token):
+        nlp = spacy.load('en_core_web_sm')
+        doc = nlp("Donald eats banana in Google store")
+        print([i for i in doc.ents])
 
+
+
+    def tes_func(self):
+
+        ###### checking urls ######
+        print(self.parse_url_text(""))
+        print(self.parse_url_text(""))
+        print(self.parse_url_text(""))
+        print(self.parse_url_text(""))
+        print(self.parse_url_text(""))
+
+        ###### checking capitals######
+        # self.check_if_capital("FirSt")
+        # self.check_if_capital("FirSt")
+        # self.check_if_capital("FirSt")
+        # self.check_if_capital("FirSt")
+        # self.check_if_capital("firST")
+        # self.check_if_capital("FIRST")
+        # self.check_if_capital("FIRST")
+        # self.check_if_capital("NBA")
+        # self.check_if_capital("NBA")
+        # self.check_if_capital("gsw")
+        # self.check_if_capital("GsW")
+
+
+        ###### checking numbers ######
         # s1 = "50.564564545"
         # s2 = "50,466.55565656"
         # s3 = "3/5"
