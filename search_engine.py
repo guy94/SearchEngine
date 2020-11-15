@@ -27,20 +27,20 @@ def run_engine():
 
 
     documents_list = r.read_file(file_name=corpus_list[0])
-    # parsed_document = p.parse_doc(documents_list[8750])
-    # for i in range(85850, len(documents_list)):
-    #     print(str(i))
-    #     parsed_document = p.parse_doc(documents_list[i])
+    # parsed_document = p.parse_doc(documents_list[1])
+    for i in range(len(documents_list)):
+        print(str(i))
+        parsed_document = p.parse_doc(documents_list[i])
 
     # Iterate over every document in the file
-    for idx, document in enumerate(documents_list):
+    # for idx, document in enumerate(documents_list):
     #     # parse the document
     #     print(documents_list[idx])
-        parsed_document = p.parse_doc(document)
-        number_of_documents += 1
-        print(str(number_of_documents))
+    #     parsed_document = p.parse_doc(document)
+    #     number_of_documents += 1
+    #     print(str(number_of_documents))
     #     # index the document data
-        indexer.add_new_doc(parsed_document)
+    #     indexer.add_new_doc(parsed_document)
 
     end = time.time()
     print(end - start)

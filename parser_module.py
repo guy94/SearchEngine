@@ -1,11 +1,12 @@
 import re
 from urllib.parse import urlparse
 import spacy
+from nltk import TweetTokenizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import en_core_web_sm
 from document import Document
-
+nlp = spacy.load("en_core_web_sm")
 
 class Parse:
 
@@ -22,9 +23,11 @@ class Parse:
         :param text:
         :return:
         """
-        text_tokens = word_tokenize(text)
+        text_tokens = word_tokenize("covid19")
+        # tweet_tokenizer = TweetTokenizer()
         self.tokens = text_tokens
-        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words]
+        # self.tokens = tweet_tokenizer.tokenize("123,456,789")
+        text_tokens_without_stopwords = [w.lower() for w in self.tokens if w not in self.stop_words]
         return text_tokens_without_stopwords
 
     def parse_doc(self, doc_as_list):
@@ -47,18 +50,22 @@ class Parse:
 
         #############################
         # self.parse_entities("ii")
-        self.tes_func()
+        # self.tes_func()
         # entities = self.parse_entities(full_text)
+        # print(self.tokens)
+        entities = self.parse_entities(full_text)
         for i, token in enumerate(self.tokens):
             url_from_text = ""
             parsed_token = ''
             entities = []
 
+
+
             if re.search("(?P<url>https?://[^\s]+)", token) is not None:
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
 
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", "500k")
+                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
 
             if token.isalpha():  #: capital letters
                 self.check_if_capital(token)
@@ -73,7 +80,7 @@ class Parse:
                 parsed_token_list = self.parse_url_text(url_from_text)
 
             elif len(number_as_list) != 0:  #: numbers
-                if i == 0:
+                if i == 0 and i < len(self.tokens) - 1:
                     parsed_token = self.parse_numbers(number_as_list[0], None, self.tokens[i + 1])
                 elif i < len(self.tokens) - 1:
                     parsed_token = self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1])
@@ -123,6 +130,7 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, token):
+        print(token)
         # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
         domain = urlparse(token).netloc
         tokenize_url = re.split('[/=:?#]', token)
@@ -145,11 +153,21 @@ class Parse:
 
     def parse_numbers(self, number_as_str, word_before, word_after):
         # print(str(Parse.idx) + ": " + number_as_str)
-        Parse.idx += 1
+        # Parse.idx += 1
         str_no_commas = re.sub("[^-?\d\./]", "", number_as_str)
         signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
                  '%': '%'}
         quantities = ["thousands", "thousand", "millions", "million", "billions", "billion"]
+        quantity = ""
+        result = ""
+        alpha = ''
+        sign = ""
+
+        if number_as_str[0] == '-':
+            sign = '-'
+
+        if number_as_str[-1].isalpha():
+            alpha = number_as_str[-1]
 
         if word_before is not None:
             word_before = word_before.lower()
@@ -164,51 +182,80 @@ class Parse:
             as_number = float("{:.3f}".format(float(str_no_commas)))
         else:
             as_number = int(str_no_commas)
-        strep = ''
+            
+        numbers_signs_list = [""]*3
 
         if word_before in signs:  # looks for signs like $ %
-            strep = signs[word_before]
+            numbers_signs_list[0] = signs[word_before]
 
         if word_after is None or (word_after not in signs and word_after not in quantities):
             if as_number < 1000:
-                strep += str(as_number)
+                numbers_signs_list[1] = str(as_number)
             elif as_number < 1000000:
-                strep += str(as_number / 1000) + 'K'
+                quantity = 'K'
+                numbers_signs_list[1] = str(as_number / 1000)
             elif 1000000 < as_number < 1000000000:
-                strep += str(as_number / 1000000) + 'M'
+                quantity = 'M'
+                numbers_signs_list[1] = str(as_number / 1000000)
             elif as_number > 1000000000:
-                strep += str(as_number / 1000000000) + 'B'
+                quantity = 'B'
+                numbers_signs_list[1] = str(as_number / 1000000000)
 
-            return strep
+            # numbers_signs_list[1] = numbers_signs_list[1] + quantity
+            # ret = result.join(numbers_signs_list)
+            # return ret
 
         else:
             if word_after in signs:  # looks for signs like $ %
-                strep += str(as_number) + signs[word_after]
+                numbers_signs_list[1] = str(as_number)
+                numbers_signs_list[2] = signs[word_after]
 
             elif word_after in quantities:  # thousand, million etc.
                 if word_after == "thousands" or word_after == "thousand":
                     if as_number < 1000:
-                        strep = str(as_number) + 'K'
+                        quantity = 'K'
+                        numbers_signs_list[1] = str(as_number)
                     elif as_number < 1000000:
-                        strep = str(as_number / 1000) + 'M'
+                        quantity = 'M'
+                        numbers_signs_list[1] = str(as_number / 1000)
                     else:
-                        strep = str(as_number / 1000000) + 'B'
+                        quantity = 'B'
+                        numbers_signs_list[1] = str(as_number / 1000000)
+
                 elif word_after == "millions" or word_after == "million":
                     if as_number < 1000:
-                        strep = str(as_number) + 'M'
+                        quantity = 'M'
+                        numbers_signs_list[1] = str(as_number)
                     elif as_number < 1000000:
-                        strep = str(as_number / 1000) + 'B'
+                        quantity = 'B'
+                        numbers_signs_list[1] = str(as_number / 1000)
+
                 elif word_after == "billions" or word_after == "billion":
-                    strep = str(as_number) + 'B'
+                    quantity = 'B'
+                    numbers_signs_list[1] = str(as_number)
 
+        if "." in numbers_signs_list[1]:
+            numbers_signs_list[1] = str(float("{:.3f}".format(float(numbers_signs_list[1]))))
+        if quantity == "":
+            numbers_signs_list[1] = numbers_signs_list[1] + alpha
 
+        numbers_signs_list[1] = numbers_signs_list[1] + quantity
+        ret = result.join(numbers_signs_list)
 
-        return strep
+        #####
+        # if word_after is not None and word_before is not None:
+        #     print("before: " + word_before + number_as_str + word_after + ", after: " + ret)
+        # if word_after is not None:
+        #     print("before: " + number_as_str + word_after + ", after: " + ret)
+        # if word_before is not None:
+        #     print("before: " + word_before + number_as_str + ", after: " + ret)
+        #####
+        return ret
 
     def parse_entities(self, token):
         # spacy.prefer_gpu()
-        nlp = spacy.load("en_core_web_sm")
-        nlp.remove_pipe('parser')
+
+        # nlp.remove_pipe('parser')
         doc = nlp(token)
         entity_list = [i for i in doc.ents]
 
@@ -240,7 +287,7 @@ class Parse:
 
 
         ###### checking numbers ######
-        s1 = "50.564564545"
+        s1 = "-50.564564545"
         s2 = "50,466.55565656"
         s3 = "3/5"
         s4 = "53.55"
@@ -250,12 +297,13 @@ class Parse:
         s8 = "$"
         s9 = "5.23/4"
         s10 = "1500"
+        s11 = "500k"
         num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
                           "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
 
         print(self.parse_numbers(s1, "$", None))
-        print(self.parse_numbers(s2, None, "million"))
-        print(self.parse_numbers(s2, None, "m"))
+        # print(self.parse_numbers(s2, None, "million"))
+        # print(self.parse_numbers(s2, None, "m"))
         # print(self.parse_numbers(s2, "m", "m"))
         # print(self.parse_numbers(num3, "$", "%"))
         # print(self.parse_numbers(num3, "$", "million"))
@@ -264,6 +312,7 @@ class Parse:
         # print(self.parse_numbers(s9, None, s7))
         # print(self.parse_numbers(s2, None, None))
         # print(self.parse_numbers(s10, "BiliOn", None))
+        # print(self.parse_numbers(s11, "BiliOn", None))
 
         x = 9
 
