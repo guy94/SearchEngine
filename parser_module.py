@@ -37,7 +37,7 @@ class Parse:
         tweet_date = doc_as_list[1]
         full_text = doc_as_list[2]
         urls = doc_as_list[3]  #: check if not empty before (ast.literal_eval(urls))
-        indices = doc_as_list[4] #: check if not empty before (list(filter(''.__ne__, re.findall("\d*", doc_as_list[4]))))
+        indices = doc_as_list[4]  #: check if not empty before (list(filter(''.__ne__, re.findall("\d*", doc_as_list[4]))))
         retweet_text = doc_as_list[5]
         retweet_urls = doc_as_list[6]
         retweet_indices = doc_as_list[7]
@@ -60,32 +60,28 @@ class Parse:
         # print(quote_urls)
         # print(quoted_indices)
         # print("--------------------")
-        print(retweet_text)
-        print(retweet_urls)
-        print(retweet_indices)
-        print("--------------------")
-
-        # print("quote_text: " + quote_text)
-        # print("url[3]: " + url)
-
-        # self.tes_func()
-        # entities = self.parse_entities(full_text)
-        # entities = []
-
-
-        # parsed_token_list = self.parse_url(url, retweet_url, quote_url, full_text)
-        # # print("url: " + url)
-        # print(retweet_url)
-        # print(quote_url)
         # print(retweet_text)
-        # print(quote_text)
-        print("-------------------------------")
+        # print(retweet_urls)
+        # print(retweet_indices)
+        # print("----------------")
+        print(retweet_quoted_text)
+        print(retweet_quoted_urls)
+        print(retweet_quoted_indices)
+        print("----------------")
+        parsed_token_list = self.parse_raw_url()
+        ###############################
+        
+
         # if len(parsed_token_list) > 0:
         #     for term in parsed_token_list:
         #         if term not in term_dict.keys():
         #             term_dict[term] = 1
         #         else:
         #             term_dict[term] += 1
+
+        # self.tes_func()
+        # entities = self.parse_entities(full_text)
+        # entities = []
 
         # for i, token in enumerate(self.tokens):
         #
@@ -271,7 +267,7 @@ class Parse:
         entity_list = [i for i in doc.ents]
 
         return entity_list
-    def parse_url(self, url, retweet_url, quote_url, full_text):
+    def parse_raw_url(self, url, retweet_url, quote_url, full_text):
         parsed_token_list = []
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
