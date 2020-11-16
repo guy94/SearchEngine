@@ -1,11 +1,11 @@
 import re
 from urllib.parse import urlparse
 import spacy
-from nltk import TweetTokenizer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import en_core_web_sm
 from document import Document
+import ast
 nlp = spacy.load("en_core_web_sm")
 
 class Parse:
@@ -23,11 +23,8 @@ class Parse:
         :param text:
         :return:
         """
-        text_tokens = word_tokenize("covid19")
-        # tweet_tokenizer = TweetTokenizer()
-        self.tokens = text_tokens
-        # self.tokens = tweet_tokenizer.tokenize("123,456,789")
-        text_tokens_without_stopwords = [w.lower() for w in self.tokens if w not in self.stop_words]
+        text_tokens = word_tokenize(text)
+        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words]
         return text_tokens_without_stopwords
 
     def parse_doc(self, doc_as_list):
@@ -39,59 +36,86 @@ class Parse:
         tweet_id = doc_as_list[0]
         tweet_date = doc_as_list[1]
         full_text = doc_as_list[2]
-        url = doc_as_list[3]
-        retweet_text = doc_as_list[4]
-        retweet_url = doc_as_list[5]
-        quote_text = doc_as_list[6]
-        quote_url = doc_as_list[7]
+        urls = doc_as_list[3]  #: check if not empty before (ast.literal_eval(urls))
+        indices = doc_as_list[4] #: check if not empty before (list(filter(''.__ne__, re.findall("\d*", doc_as_list[4]))))
+        retweet_text = doc_as_list[5]
+        retweet_urls = doc_as_list[6]
+        retweet_indices = doc_as_list[7]
+        quoted_text = doc_as_list[8]
+        quote_urls = doc_as_list[9]
+        quoted_indices = doc_as_list[10]
+        retweet_quoted_text = doc_as_list[11]
+        retweet_quoted_urls = doc_as_list[12]
+        retweet_quoted_indices = doc_as_list[13]
         term_dict = {}
-        # self.tokens = full_text.split()
         tokenized_text = self.parse_sentence(full_text)
+        self.tokens = tokenized_text
 
         #############################
-        # self.parse_entities("ii")
+        print("full text: " + full_text)
+        print("url: " + urls)
+        print("indices: " + indices)
+        print("--------------------")
+        # print(quoted_text)
+        # print(quote_urls)
+        # print(quoted_indices)
+        # print("--------------------")
+        print(retweet_text)
+        print(retweet_urls)
+        print(retweet_indices)
+        print("--------------------")
+
+        # print("quote_text: " + quote_text)
+        # print("url[3]: " + url)
+
         # self.tes_func()
         # entities = self.parse_entities(full_text)
-        # print(self.tokens)
-        entities = self.parse_entities(full_text)
-        for i, token in enumerate(self.tokens):
-            url_from_text = ""
-            parsed_token = ''
-            entities = []
+        # entities = []
 
 
+        # parsed_token_list = self.parse_url(url, retweet_url, quote_url, full_text)
+        # # print("url: " + url)
+        # print(retweet_url)
+        # print(quote_url)
+        # print(retweet_text)
+        # print(quote_text)
+        print("-------------------------------")
+        # if len(parsed_token_list) > 0:
+        #     for term in parsed_token_list:
+        #         if term not in term_dict.keys():
+        #             term_dict[term] = 1
+        #         else:
+        #             term_dict[term] += 1
 
-            if re.search("(?P<url>https?://[^\s]+)", token) is not None:
-                url_from_text = re.search("(?P<url>https?://[^\s]+)", token).group("url")
-
-            number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
-
-            if token.isalpha():  #: capital letters
-                self.check_if_capital(token)
-
-            if token.startswith('@'):  #: @ sign
-                parsed_token = token
-
-            elif token.startswith('#'):  #: # sign
-                parsed_token_list = self.parse_hashtag(token)
-
-            elif url_from_text != "":  #: url
-                parsed_token_list = self.parse_url_text(url_from_text)
-
-            elif len(number_as_list) != 0:  #: numbers
-                if i == 0 and i < len(self.tokens) - 1:
-                    parsed_token = self.parse_numbers(number_as_list[0], None, self.tokens[i + 1])
-                elif i < len(self.tokens) - 1:
-                    parsed_token = self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1])
-                else:
-                    parsed_token = self.parse_numbers(number_as_list[0], self.tokens[i - 1], None)
-
-            # if parsed_token != '':
-            #     if parsed_token not in term_dict.keys():
-            #         term_dict[parsed_token] = 1
-            #     else:
-            #         term_dict[parsed_token] += 1
+        # for i, token in enumerate(self.tokens):
+        #
+        #     number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
+        #                   "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
+        #
+        #     if token.isalpha():  #: capital letters
+        #         self.check_if_capital(token)
+        #
+        #     if token.startswith('@'):  #: @ sign
+        #         if i < len(self.tokens) - 1:
+        #             parsed_token_list = list(token + self.tokens[i + 1])
+        #
+        #     elif token.startswith('#'):  #: # sign
+        #         parsed_token_list = self.parse_hashtag(token)
+        #
+        #     elif len(number_as_list) != 0:  #: numbers
+        #         if i == 0 and i < len(self.tokens) - 1:
+        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
+        #         elif i < len(self.tokens) - 1:
+        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
+        #         else:
+        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
+        #
+        #     if len(parsed_token_list) > 0:
+        #         for term in parsed_token_list:
+        #             if term not in term_dict.keys():
+        #                 term_dict[term] = 1
+        #             else:
+        #                 term_dict[term] += 1
         #############################
 
         doc_length = len(tokenized_text)  # after text operations.
@@ -102,8 +126,8 @@ class Parse:
             else:
                 term_dict[term] += 1
 
-        document = Document(tweet_id, tweet_date, full_text, url, retweet_text, retweet_url, quote_text,
-                            quote_url, term_dict, doc_length)
+        document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
+                            quote_urls, term_dict, doc_length)
         return document
 
 
@@ -121,7 +145,6 @@ class Parse:
                 Parse.capital_letter_dict[new_word][0] = False
                 Parse.capital_letter_dict[new_word][1] += 1
 
-
     def parse_hashtag(self, token):
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
@@ -130,7 +153,6 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, token):
-        print(token)
         # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
         domain = urlparse(token).netloc
         tokenize_url = re.split('[/=:?#]', token)
@@ -161,10 +183,6 @@ class Parse:
         quantity = ""
         result = ""
         alpha = ''
-        sign = ""
-
-        if number_as_str[0] == '-':
-            sign = '-'
 
         if number_as_str[-1].isalpha():
             alpha = number_as_str[-1]
@@ -200,10 +218,6 @@ class Parse:
             elif as_number > 1000000000:
                 quantity = 'B'
                 numbers_signs_list[1] = str(as_number / 1000000000)
-
-            # numbers_signs_list[1] = numbers_signs_list[1] + quantity
-            # ret = result.join(numbers_signs_list)
-            # return ret
 
         else:
             if word_after in signs:  # looks for signs like $ %
@@ -253,15 +267,35 @@ class Parse:
         return ret
 
     def parse_entities(self, token):
-        # spacy.prefer_gpu()
-
-        # nlp.remove_pipe('parser')
         doc = nlp(token)
         entity_list = [i for i in doc.ents]
 
         return entity_list
+    def parse_url(self, url, retweet_url, quote_url, full_text):
+        parsed_token_list = []
+        if url == "":
+            if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
+                url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
+                parsed_token_list = self.parse_url_text(url_from_text)
+        else:
+            url_split = url[2:-2]
+            url_split_list = re.sub('(":")+', " ", url_split)
+            url_split_list = url_split_list.split(" ")
+            parsed_token_list.extend(url_split_list)
 
+        if retweet_url is not None:
+            url_split = retweet_url[2:-2]
+            url_split_list = re.sub('(":")+', " ", url_split)
+            url_split_list = url_split_list.split(" ")
+            parsed_token_list.extend(url_split_list)
 
+        if quote_url is not None:
+            url_split = quote_url[2:-2]
+            url_split_list = re.sub('(":")+', " ", url_split)
+            url_split_list = url_split_list.split(" ")
+            parsed_token_list.extend(url_split_list)
+
+        return parsed_token_list
 
     def tes_func(self):
 
@@ -287,21 +321,22 @@ class Parse:
 
 
         ###### checking numbers ######
-        s1 = "-50.564564545"
-        s2 = "50,466.55565656"
-        s3 = "3/5"
-        s4 = "53.55"
-        s5 = "percent"
-        s6 = "PerCentage"
-        s7 = "%"
-        s8 = "$"
-        s9 = "5.23/4"
-        s10 = "1500"
-        s11 = "500k"
+        # s1 = "-50.564564545"
+        # s2 = "50,466.55565656"
+        s3 = r"3\5"
+        # s4 = "53.55"
+        # s5 = "percent"
+        # s6 = "PerCentage"
+        # s7 = "%"
+        # s8 = "$"
+        # s9 = "5.23/4"
+        # s10 = "1500"
+        # s11 = "500k"
         num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
                           "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
+        print(num3)
+        # print(self.parse_numbers(s1, "$", None))
 
-        print(self.parse_numbers(s1, "$", None))
         # print(self.parse_numbers(s2, None, "million"))
         # print(self.parse_numbers(s2, None, "m"))
         # print(self.parse_numbers(s2, "m", "m"))

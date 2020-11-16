@@ -27,9 +27,8 @@ def run_engine():
 
 
     documents_list = r.read_file(file_name=corpus_list[0])
-    # parsed_document = p.parse_doc(documents_list[1])
+    parsed_document = p.parse_doc(documents_list[4])
     for i in range(len(documents_list)):
-        print(str(i))
         parsed_document = p.parse_doc(documents_list[i])
 
     # Iterate over every document in the file
