@@ -70,7 +70,7 @@ class Parse:
         print("----------------")
         parsed_token_list = self.parse_raw_url()
         ###############################
-        
+
 
         # if len(parsed_token_list) > 0:
         #     for term in parsed_token_list:
