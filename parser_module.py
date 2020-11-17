@@ -46,22 +46,27 @@ class Parse:
         retweet_quoted_text = doc_as_list[11]
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
-
+        tokenized_text = self.parse_sentence(full_text)
+        self.tokens = tokenized_text
         term_dict = {}
 
         indices_as_list = self.indices_as_list(indices)
         indices_retweet_as_list = self.indices_as_list(retweet_indices)
         indices_quoted_as_list = self.indices_as_list(quoted_indices)
         indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
+        # print(Parse.idx)
+        # Parse.idx += 1
+        # if len(indices_as_list) > 0:
+        #     print(indices_as_list)
+        #     print(full_text)
 
         # print(indices_as_list)
         # print(indices_retweet_as_list)
         # print(indices_quoted_as_list)
         # print(indices_retweet_quoted_as_list)
-
+        #
         parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
-
-        # self.tokens = tokenized_text
+        #
         # if quoted_text != "":
         #     tokenized_quoted_text = self.parse_sentence(quoted_text)
         #     self.tokens = self.tokens + tokenized_quoted_text
@@ -85,15 +90,22 @@ class Parse:
         # print("indices: " + indices)
         # print("--------------------")
         # print(quoted_text)
+        # print('quote_urls')
         # print(quote_urls)
+        # print("quoted_indices")
         # print(quoted_indices)
         # print("--------------------")
         # print(retweet_text)
+        # print('retweet_urls')
         # print(retweet_urls)
+        # print('retweet_indices')
         # print(retweet_indices)
         # print("----------------")
+        # print('retweet_quoted_text')
         # print(retweet_quoted_text)
+        # print('retweet_quoted_urls')
         # print(retweet_quoted_urls)
+        # print('retweet_quoted_indices')
         # print(retweet_quoted_indices)
         # print("----------------")
 
@@ -208,6 +220,7 @@ class Parse:
         quantity = ""
         result = ""
         alpha = ''
+        division_as_is = ""
 
         if number_as_str[-1].isalpha():
             alpha = number_as_str[-1]
@@ -219,6 +232,7 @@ class Parse:
             word_after = word_after.lower()
 
         if "/" in str_no_commas:
+            division_as_is = str_no_commas
             num, denum = str_no_commas.split('/')
             as_number = float(num) / float(denum)
         elif "." in str_no_commas:
@@ -277,9 +291,12 @@ class Parse:
             numbers_signs_list[1] = str(float("{:.3f}".format(float(numbers_signs_list[1]))))
         if quantity == "":
             numbers_signs_list[1] = numbers_signs_list[1] + alpha
+            division_as_is = division_as_is + alpha
 
+        division_as_is = numbers_signs_list[0] + division_as_is + quantity + numbers_signs_list[2]
         numbers_signs_list[1] = numbers_signs_list[1] + quantity
         ret = result.join(numbers_signs_list)
+        returnlist = [ret, division_as_is]
 
         #####
         # if word_after is not None and word_before is not None:
@@ -289,7 +306,7 @@ class Parse:
         # if word_before is not None:
         #     print("before: " + word_before + number_as_str + ", after: " + ret)
         #####
-        return ret
+        return returnlist
 
     def parse_entities(self, token):
         doc = nlp(token)
@@ -298,28 +315,32 @@ class Parse:
         return entity_list
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         parsed_token_list = []
-        input_list = [url, retweet_url, quote_url,retweet_quoted_urls]
+        input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
                 parsed_token_list = self.parse_url_text(url_from_text)
-        else:
-            for url in input_list:
-                if url is not None:
-                    url_str_as_list = url[2:-2]
-                    dict_as_list = re.sub('(":")+', " ", url_str_as_list)
-                    list_url = dict_as_list.split(" ")
-                    i = 0
-                    for key in list_url:
-                        if key != "null" and i % 2 != 0:
-                            parsed_token_list.append(key)
-                        i = i+1
+        for url in input_list:
+            if url is not None or url != "{}":
+                url_str_as_list = url[2:-2]
+                url_str_as_list = url_str_as_list.replace("null", "\"null\"")
+                dict_as_list = re.sub('(":")+', "\" \"", url_str_as_list)
+
+                list_url = dict_as_list.split(" ")
+                i = 0
+                for key in list_url:
+                    if key != "null" and i % 2 != 0:
+                        parsed_token_list.append(key)
+                    i = i+1
         return parsed_token_list
 
     def indices_as_list(self, indices):
         indices_as_list = []
         if (indices is not None) and (indices != ""):
             indices_as_list = (list(filter(''.__ne__, re.findall("\d*", indices))))
+        for i in range(len(indices_as_list)):
+            indices_as_list[i] = int(indices_as_list[i])
+
         return indices_as_list
 
     def add_to_tokens(self, text):
@@ -354,12 +375,12 @@ class Parse:
         # s1 = "-50.564564545"
         # s2 = "50,466.55565656"
         s3 = r"3\5"
-        # s4 = "53.55"
+        s4 = "53.55"
         # s5 = "percent"
         # s6 = "PerCentage"
-        # s7 = "%"
+        s7 = "%"
         # s8 = "$"
-        # s9 = "5.23/4"
+        s9 = "5.23/4"
         # s10 = "1500"
         # s11 = "500k"
         num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
@@ -374,7 +395,7 @@ class Parse:
         # print(self.parse_numbers(num3, "$", "million"))
         # print(self.parse_numbers(s4, None, s5))
         # print(self.parse_numbers(s4, s6, None))
-        # print(self.parse_numbers(s9, None, s7))
+        print(self.parse_numbers(s4, None, s7))
         # print(self.parse_numbers(s2, None, None))
         # print(self.parse_numbers(s10, "BiliOn", None))
         # print(self.parse_numbers(s11, "BiliOn", None))
