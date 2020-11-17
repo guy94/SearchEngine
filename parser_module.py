@@ -5,7 +5,6 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import en_core_web_sm
 from document import Document
-import ast
 nlp = spacy.load("en_core_web_sm")
 
 class Parse:
@@ -47,15 +46,44 @@ class Parse:
         retweet_quoted_text = doc_as_list[11]
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
+
         term_dict = {}
-        tokenized_text = self.parse_sentence(full_text)
-        self.tokens = tokenized_text
+
+        indices_as_list = self.indices_as_list(indices)
+        indices_retweet_as_list = self.indices_as_list(retweet_indices)
+        indices_quoted_as_list = self.indices_as_list(quoted_indices)
+        indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
+
+        # print(indices_as_list)
+        # print(indices_retweet_as_list)
+        # print(indices_quoted_as_list)
+        # print(indices_retweet_quoted_as_list)
+
+        parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
+
+        # self.tokens = tokenized_text
+        # if quoted_text != "":
+        #     tokenized_quoted_text = self.parse_sentence(quoted_text)
+        #     self.tokens = self.tokens + tokenized_quoted_text
+        #
+        # if retweet_quoted_text != "":
+        #     tokenized_retweet_quoted_text = self.parse_sentence(retweet_quoted_text)
+        #     self.tokens = self.tokens + tokenized_retweet_quoted_text
+
+        # print("full text")
+        # print(full_text)
+        # print("retweet text")
+        # print(retweet_text)
+        # print("Quoted text")
+        # print(quoted_text)
+        # print("Quoted and re text")
+        # print(retweet_quoted_text)
 
         #############################
-        print("full text: " + full_text)
-        print("url: " + urls)
-        print("indices: " + indices)
-        print("--------------------")
+        # print("full text: " + full_text)
+        # print("url: " + urls)
+        # print("indices: " + indices)
+        # print("--------------------")
         # print(quoted_text)
         # print(quote_urls)
         # print(quoted_indices)
@@ -64,11 +92,12 @@ class Parse:
         # print(retweet_urls)
         # print(retweet_indices)
         # print("----------------")
-        print(retweet_quoted_text)
-        print(retweet_quoted_urls)
-        print(retweet_quoted_indices)
-        print("----------------")
-        parsed_token_list = self.parse_raw_url()
+        # print(retweet_quoted_text)
+        # print(retweet_quoted_urls)
+        # print(retweet_quoted_indices)
+        # print("----------------")
+
+        # print(parsed_token_list)
         ###############################
         
 
@@ -267,31 +296,36 @@ class Parse:
         entity_list = [i for i in doc.ents]
 
         return entity_list
-    def parse_raw_url(self, url, retweet_url, quote_url, full_text):
+    def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         parsed_token_list = []
+        input_list = [url, retweet_url, quote_url,retweet_quoted_urls]
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
                 parsed_token_list = self.parse_url_text(url_from_text)
         else:
-            url_split = url[2:-2]
-            url_split_list = re.sub('(":")+', " ", url_split)
-            url_split_list = url_split_list.split(" ")
-            parsed_token_list.extend(url_split_list)
-
-        if retweet_url is not None:
-            url_split = retweet_url[2:-2]
-            url_split_list = re.sub('(":")+', " ", url_split)
-            url_split_list = url_split_list.split(" ")
-            parsed_token_list.extend(url_split_list)
-
-        if quote_url is not None:
-            url_split = quote_url[2:-2]
-            url_split_list = re.sub('(":")+', " ", url_split)
-            url_split_list = url_split_list.split(" ")
-            parsed_token_list.extend(url_split_list)
-
+            for url in input_list:
+                if url is not None:
+                    url_str_as_list = url[2:-2]
+                    dict_as_list = re.sub('(":")+', " ", url_str_as_list)
+                    list_url = dict_as_list.split(" ")
+                    i = 0
+                    for key in list_url:
+                        if key != "null" and i % 2 != 0:
+                            parsed_token_list.append(key)
+                        i = i+1
         return parsed_token_list
+
+    def indices_as_list(self, indices):
+        indices_as_list = []
+        if (indices is not None) and (indices != ""):
+            indices_as_list = (list(filter(''.__ne__, re.findall("\d*", indices))))
+        return indices_as_list
+
+    def add_to_tokens(self, text):
+        if text != "":
+            tokenized_quoted_text = self.parse_sentence(text)
+            self.tokens = self.tokens + tokenized_quoted_text
 
     def tes_func(self):
 
