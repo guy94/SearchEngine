@@ -206,10 +206,11 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, urls):
-        # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
+
         to_return = []
         for token in urls:
-            domain = urlparse(token).netloc
+            # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
+            # domain = urlparse(token).netloc
             tokenize_url = re.split('[/=:?#]', token)
             index = tokenize_url.index(domain)
             www_str = ''
