@@ -5,6 +5,8 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import en_core_web_sm
 from document import Document
+from nltk.tokenize import TweetTokenizer
+
 nlp = spacy.load("en_core_web_sm")
 
 class Parse:
@@ -35,8 +37,8 @@ class Parse:
         tweet_id = doc_as_list[0]
         tweet_date = doc_as_list[1]
         full_text = doc_as_list[2]
-        urls = doc_as_list[3]  #: check if not empty before (ast.literal_eval(urls))
-        indices = doc_as_list[4]  #: check if not empty before (list(filter(''.__ne__, re.findall("\d*", doc_as_list[4]))))
+        urls = doc_as_list[3]
+        indices = doc_as_list[4]
         retweet_text = doc_as_list[5]
         retweet_urls = doc_as_list[6]
         retweet_indices = doc_as_list[7]
@@ -46,16 +48,17 @@ class Parse:
         retweet_quoted_text = doc_as_list[11]
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
-        tokenized_text = self.parse_sentence(full_text)
+
+        tokenized_text = self.parse_sentence(self.connect_tweets(full_text, retweet_quoted_text, quoted_text))
         self.tokens = tokenized_text
+
         term_dict = {}
 
         indices_as_list = self.indices_as_list(indices)
         indices_retweet_as_list = self.indices_as_list(retweet_indices)
         indices_quoted_as_list = self.indices_as_list(quoted_indices)
         indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
-        # print(Parse.idx)
-        # Parse.idx += 1
+
         # if len(indices_as_list) > 0:
         #     print(indices_as_list)
         #     print(full_text)
@@ -66,6 +69,7 @@ class Parse:
         # print(indices_retweet_quoted_as_list)
         #
         parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
+        print(parsed_token_list)
         #
         # if quoted_text != "":
         #     tokenized_quoted_text = self.parse_sentence(quoted_text)
@@ -183,6 +187,11 @@ class Parse:
                 Parse.capital_letter_dict[new_word][1] += 1
 
     def parse_hashtag(self, token):
+        """
+        This function Parse the token
+        :param token:
+        :return:
+        """
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
         tokens_with_hashtag.extend(([a.lower() for a in re.split(r'([A-Z]*[a-z]*)', token) if a]))
@@ -314,15 +323,15 @@ class Parse:
 
         return entity_list
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
-        parsed_token_list = []
+        raw_token_list = []
         input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
-                parsed_token_list = self.parse_url_text(url_from_text)
-        for url in input_list:
-            if url is not None or url != "{}":
-                url_str_as_list = url[2:-2]
+                raw_token_list = self.parse_url_text(url_from_text)
+        for urls in input_list:
+            if urls is not None and urls != "{}":
+                url_str_as_list = urls[2:-2]
                 url_str_as_list = url_str_as_list.replace("null", "\"null\"")
                 dict_as_list = re.sub('(":")+', "\" \"", url_str_as_list)
 
@@ -330,9 +339,9 @@ class Parse:
                 i = 0
                 for key in list_url:
                     if key != "null" and i % 2 != 0:
-                        parsed_token_list.append(key)
+                        raw_token_list.append(key)
                     i = i+1
-        return parsed_token_list
+        return raw_token_list
 
     def indices_as_list(self, indices):
         indices_as_list = []
@@ -347,6 +356,16 @@ class Parse:
         if text != "":
             tokenized_quoted_text = self.parse_sentence(text)
             self.tokens = self.tokens + tokenized_quoted_text
+
+    def connect_tweets(self, tweet, retweet_quoted_text, quoted_text):
+
+        tweet_to_return = tweet
+        if retweet_quoted_text is not None:
+            tweet_to_return += retweet_quoted_text
+        if quoted_text is not None and retweet_quoted_text != quoted_text:
+            tweet_to_return += quoted_text
+
+        return tweet_to_return
 
     def tes_func(self):
 
