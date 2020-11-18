@@ -36,8 +36,8 @@ class Parse:
         tweet_id = doc_as_list[0]
         tweet_date = doc_as_list[1]
         full_text = doc_as_list[2]
-        urls = doc_as_list[3]  #: check if not empty before (ast.literal_eval(urls))
-        indices = doc_as_list[4]  #: check if not empty before (list(filter(''.__ne__, re.findall("\d*", doc_as_list[4]))))
+        urls = doc_as_list[3]
+        indices = doc_as_list[4]
         retweet_text = doc_as_list[5]
         retweet_urls = doc_as_list[6]
         retweet_indices = doc_as_list[7]
@@ -47,8 +47,10 @@ class Parse:
         retweet_quoted_text = doc_as_list[11]
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
-        tokenized_text = self.parse_sentence(full_text)
+
+        tokenized_text = self.parse_sentence(self.connect_tweets(full_text, retweet_quoted_text, quoted_text))
         self.tokens = tokenized_text
+
         term_dict = {}
 
         indices_as_list = self.indices_as_list(indices)
@@ -62,7 +64,6 @@ class Parse:
         # if len(indices_as_list) > 0:
         #     print(indices_as_list)
         #     print(full_text)
-
         # print(indices_as_list)
         # print(indices_retweet_as_list)
         # print(indices_quoted_as_list)
@@ -87,10 +88,10 @@ class Parse:
         # print("retweet text")
         # print(retweet_text)
         # print("----------------")
-        print("Quoted text")
-        print(quoted_text)
-        print("retweet_quoted_text")
-        print(retweet_quoted_text)
+        # print("Quoted text")
+        # print(quoted_text)
+        # print("retweet_quoted_text")
+        # print(retweet_quoted_text)
 
         #############################
         # print("full text: " + full_text)
@@ -98,10 +99,10 @@ class Parse:
         # print("indices: " + indices)
         # print("--------------------")
         # print(quoted_text)
-        print('quote_urls')
-        print(quote_urls)
-        print("quoted_indices")
-        print(quoted_indices)
+        # print('quote_urls')
+        # print(quote_urls)
+        # print("quoted_indices")
+        # print(quoted_indices)
         # print("--------------------")
         # print(retweet_text)
         # print('retweet_urls')
@@ -111,11 +112,11 @@ class Parse:
         # print("----------------")
         # print('retweet_quoted_text')
         # print(retweet_quoted_text)
-        print('retweet_quoted_urls')
-        print(retweet_quoted_urls)
-        print('retweet_quoted_indices')
-        print(retweet_quoted_indices)
-        print("----------------")
+        # print('retweet_quoted_urls')
+        # print(retweet_quoted_urls)
+        # print('retweet_quoted_indices')
+        # print(retweet_quoted_indices)
+        # print("----------------")
 
         # print(parsed_token_list)
         ###############################
@@ -192,6 +193,11 @@ class Parse:
                 Parse.capital_letter_dict[new_word][1] += 1
 
     def parse_hashtag(self, token):
+        """
+        This function Parse the token
+        :param token:
+        :return:
+        """
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
         tokens_with_hashtag.extend(([a.lower() for a in re.split(r'([A-Z]*[a-z]*)', token) if a]))
@@ -328,7 +334,7 @@ class Parse:
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
-                parsed_token_list = self.parse_url_text(url_from_text)
+                raw_token_list = self.parse_url_text(url_from_text)
         for urls in input_list:
             if urls is not None and urls != "{}":
                 url_str_as_list = urls[2:-2]
@@ -343,7 +349,7 @@ class Parse:
                     if key != "\"null\"" and i % 2 != 0:
                         parsed_token_list.add(key)
                     i = i+1
-        return parsed_token_list
+        return raw_token_list
 
     def indices_as_list(self, indices):
         indices_as_list = []
@@ -358,6 +364,16 @@ class Parse:
         if text != "":
             tokenized_quoted_text = self.parse_sentence(text)
             self.tokens = self.tokens + tokenized_quoted_text
+
+    def connect_tweets(self, tweet, retweet_quoted_text, quoted_text):
+
+        tweet_to_return = tweet
+        if retweet_quoted_text is not None:
+            tweet_to_return += retweet_quoted_text
+        if quoted_text is not None and retweet_quoted_text != quoted_text:
+            tweet_to_return += quoted_text
+
+        return tweet_to_return
 
     def tes_func(self):
 
