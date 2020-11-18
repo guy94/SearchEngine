@@ -16,6 +16,7 @@ class Parse:
     def __init__(self):
         self.stop_words = stopwords.words('english')
         self.tokens = None
+        self.is_num_after_num = False
 
     def parse_sentence(self, text):
         """
@@ -50,107 +51,49 @@ class Parse:
 
         tokenized_text = self.parse_sentence(self.connect_tweets(full_text, retweet_quoted_text, quoted_text))
         self.tokens = tokenized_text
-
         term_dict = {}
 
-        indices_as_list = self.indices_as_list(indices)
-        indices_retweet_as_list = self.indices_as_list(retweet_indices)
-        indices_quoted_as_list = self.indices_as_list(quoted_indices)
-        indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
-
         ########################################
-        # print(Parse.idx)
-        # Parse.idx += 1
-        # if len(indices_as_list) > 0:
-        #     print(indices_as_list)
-        #     print(full_text)
-        # print(indices_as_list)
-        # print(indices_retweet_as_list)
-        # print(indices_quoted_as_list)
-        # print(indices_retweet_quoted_as_list)
-        #
-        # parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
-        #
-        # if quoted_text != "":
-        #     tokenized_quoted_text = self.parse_sentence(quoted_text)
-        #     self.tokens = self.tokens + tokenized_quoted_text
-        #
-        # if retweet_quoted_text != "":
-        #     tokenized_retweet_quoted_text = self.parse_sentence(retweet_quoted_text)
-        #     self.tokens = self.tokens + tokenized_retweet_quoted_text
-
-        # print("full text")
-        # print(full_text)
-        # print("url")
-        # print(urls)
-        # print("indices")
-        # print(indices)
-        # print("retweet text")
-        # print(retweet_text)
-        # print("----------------")
-        # print("Quoted text")
-        # print(quoted_text)
-        # print("retweet_quoted_text")
-        # print(retweet_quoted_text)
-
-        #############################
-        # print("full text: " + full_text)
-        # print("url: " + urls)
-        # print("indices: " + indices)
-        # print("--------------------")
-        # print(quoted_text)
-        # print('quote_urls')
-        # print(quote_urls)
-        # print("quoted_indices")
-        # print(quoted_indices)
-        # print("--------------------")
-        # print(retweet_text)
-        # print('retweet_urls')
-        # print(retweet_urls)
-        # print('retweet_indices')
-        # print(retweet_indices)
-        # print("----------------")
-        # print('retweet_quoted_text')
-        # print(retweet_quoted_text)
-        # print('retweet_quoted_urls')
-        # print(retweet_quoted_urls)
-        # print('retweet_quoted_indices')
-        # print(retweet_quoted_indices)
-        # print("----------------")
-
-        # print(parsed_token_list)
-        ###############################
-
-        # if len(parsed_token_list) > 0:
-        #     for term in parsed_token_list:
-        #         if term not in term_dict.keys():
-        #             term_dict[term] = 1
-        #         else:
-        #             term_dict[term] += 1
-
+        # TODO: check if needed
+        # indices_as_list = self.indices_as_list(indices)
+        # indices_retweet_as_list = self.indices_as_list(retweet_indices)
+        # indices_quoted_as_list = self.indices_as_list(quoted_indices)
+        # indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
         # self.tes_func()
         # entities = self.parse_entities(full_text)
         # entities = []
 
-        parsed_token_list = []
         parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)  #TODO: send to break down urls
         broken_urls = self.parse_url_text(parsed_token_list)
-        for i, token in enumerate(self.tokens):
 
+        for term in broken_urls:
+            if term not in term_dict.keys():
+                term_dict[term] = 1
+            else:
+                term_dict[term] += 1
+
+        last_number_parsed = None
+        count_num_in_a_row = 0
+        test = ['gal','35','3/5k','guy']
+        for i, token in enumerate(test):
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                           "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
 
             if token.isalpha():  #: capital letters
                 self.check_if_capital(token)
+                count_num_in_a_row = 0
 
             if token.startswith('@'):  #: @ sign
                 if i < len(self.tokens) - 1:
                     parsed_token_list = list(token + self.tokens[i + 1])
+                    count_num_in_a_row = 0
 
             elif token.startswith('#'):  #: # sign
                 parsed_token_list = self.parse_hashtag(token)
+                count_num_in_a_row = 0
 
             elif len(number_as_list) != 0:  #: numbers
+                count_num_in_a_row += 1
                 if i == 0 and i < len(self.tokens) - 1:
                     parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
                 elif i < len(self.tokens) - 1:
@@ -158,12 +101,20 @@ class Parse:
                 else:
                     parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
 
-            # if len(parsed_token_list) > 0:
-            #     for term in parsed_token_list:
-            #         if term not in term_dict.keys():
-            #             term_dict[term] = 1
-            #         else:
-            #             term_dict[term] += 1
+                if count_num_in_a_row == 2 and len(parsed_token_list) == 2:
+                    parsed_token_list = [last_number_parsed + " " +parsed_token_list[1]]
+                    count_num_in_a_row = 0
+                    del term_dict[last_number_parsed]
+                else:
+                    last_number_parsed = parsed_token_list[0]
+
+
+            if len(parsed_token_list) > 0:
+                for term in parsed_token_list:
+                    if term not in term_dict.keys():
+                        term_dict[term] = 1
+                    else:
+                        term_dict[term] += 1
         #############################
 
         doc_length = len(tokenized_text)  # after text operations.
@@ -206,12 +157,11 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, urls):
-
+            # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
         to_return = []
         for token in urls:
-            # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
-            # domain = urlparse(token).netloc
-            tokenize_url = re.split('[/=:?#]', token)
+            domain = urlparse(token[1:-1]).netloc
+            tokenize_url = re.split('[/=:?#]', token[1:-1])
             index = tokenize_url.index(domain)
             www_str = ''
             if "www." in domain:
@@ -229,8 +179,7 @@ class Parse:
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
-        # print(str(Parse.idx) + ": " + number_as_str)
-        # Parse.idx += 1
+
         str_no_commas = re.sub("[^-?\d\./]", "", number_as_str)
         signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
                  '%': '%'}
@@ -257,7 +206,7 @@ class Parse:
             as_number = float("{:.3f}".format(float(str_no_commas)))
         else:
             as_number = int(str_no_commas)
-            
+
         numbers_signs_list = [""]*3
 
         if word_before in signs:  # looks for signs like $ %
@@ -316,6 +265,9 @@ class Parse:
         ret = result.join(numbers_signs_list)
         returnlist = [ret, division_as_is]
 
+        if returnlist[1] != "":
+            return returnlist
+        return [ret]
         #####
         # if word_after is not None and word_before is not None:
         #     print("before: " + word_before + number_as_str + word_after + ", after: " + ret)
@@ -324,7 +276,7 @@ class Parse:
         # if word_before is not None:
         #     print("before: " + word_before + number_as_str + ", after: " + ret)
         #####
-        return returnlist
+        # return returnlist
 
     def parse_entities(self, token):
         doc = nlp(token)
