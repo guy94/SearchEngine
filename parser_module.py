@@ -134,6 +134,7 @@ class Parse:
 
         parsed_token_list = []
         parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)  #TODO: send to break down urls
+        broken_urls = self.parse_url_text(parsed_token_list)
         for i, token in enumerate(self.tokens):
 
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
@@ -204,24 +205,25 @@ class Parse:
 
         return tokens_with_hashtag
 
-    def parse_url_text(self, token):
+    def parse_url_text(self, urls):
         # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
-        domain = urlparse(token).netloc
-        tokenize_url = re.split('[/=:?#]', token)
-        index = tokenize_url.index(domain)
-        www_str = ''
-        if "www." in domain:
-            domain = domain[4:]
-            www_str = "www"
-
-        tokenize_url.pop(index)
-        tokenize_url.insert(index, www_str)
-        tokenize_url.insert(index + 1, domain)
-
         to_return = []
-        for i in range(len(tokenize_url)):
-            if tokenize_url[i] != "":
-                to_return.append(tokenize_url[i])
+        for token in urls:
+            domain = urlparse(token).netloc
+            tokenize_url = re.split('[/=:?#]', token)
+            index = tokenize_url.index(domain)
+            www_str = ''
+            if "www." in domain:
+                domain = domain[4:]
+                www_str = "www"
+
+            tokenize_url.pop(index)
+            tokenize_url.insert(index, www_str)
+            tokenize_url.insert(index + 1, domain)
+
+            for i in range(len(tokenize_url)):
+                if tokenize_url[i] != "":
+                    to_return.append(tokenize_url[i])
 
         return to_return
 
@@ -340,16 +342,13 @@ class Parse:
                 url_str_as_list = urls[2:-2]
                 url_str_as_list = url_str_as_list.replace("null", "\"null\"")
                 dict_as_list = re.sub('(":")+''|(",")+', "\" \"", url_str_as_list)
-                # dict_as_list = re.sub('(",")+', "\" \"", dict_as_list)
-
 
                 list_url = dict_as_list.split(" ")
                 i = 0
-                for key in list_url:
+                for i, key in enumerate(list_url):
                     if key != "\"null\"" and i % 2 != 0:
                         parsed_token_list.add(key)
-                    i = i+1
-        return raw_token_list
+        return parsed_token_list
 
     def indices_as_list(self, indices):
         indices_as_list = []
