@@ -3,9 +3,10 @@ from urllib.parse import urlparse
 import spacy
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-import en_core_web_sm
 from document import Document
+import ast
 nlp = spacy.load("en_core_web_sm")
+
 
 class Parse:
 
@@ -54,6 +55,8 @@ class Parse:
         indices_retweet_as_list = self.indices_as_list(retweet_indices)
         indices_quoted_as_list = self.indices_as_list(quoted_indices)
         indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
+
+        ########################################
         # print(Parse.idx)
         # Parse.idx += 1
         # if len(indices_as_list) > 0:
@@ -65,7 +68,7 @@ class Parse:
         # print(indices_quoted_as_list)
         # print(indices_retweet_quoted_as_list)
         #
-        parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
+        # parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
         #
         # if quoted_text != "":
         #     tokenized_quoted_text = self.parse_sentence(quoted_text)
@@ -77,12 +80,17 @@ class Parse:
 
         # print("full text")
         # print(full_text)
+        # print("url")
+        # print(urls)
+        # print("indices")
+        # print(indices)
         # print("retweet text")
         # print(retweet_text)
-        # print("Quoted text")
-        # print(quoted_text)
-        # print("Quoted and re text")
-        # print(retweet_quoted_text)
+        # print("----------------")
+        print("Quoted text")
+        print(quoted_text)
+        print("retweet_quoted_text")
+        print(retweet_quoted_text)
 
         #############################
         # print("full text: " + full_text)
@@ -90,10 +98,10 @@ class Parse:
         # print("indices: " + indices)
         # print("--------------------")
         # print(quoted_text)
-        # print('quote_urls')
-        # print(quote_urls)
-        # print("quoted_indices")
-        # print(quoted_indices)
+        print('quote_urls')
+        print(quote_urls)
+        print("quoted_indices")
+        print(quoted_indices)
         # print("--------------------")
         # print(retweet_text)
         # print('retweet_urls')
@@ -103,15 +111,14 @@ class Parse:
         # print("----------------")
         # print('retweet_quoted_text')
         # print(retweet_quoted_text)
-        # print('retweet_quoted_urls')
-        # print(retweet_quoted_urls)
-        # print('retweet_quoted_indices')
-        # print(retweet_quoted_indices)
-        # print("----------------")
+        print('retweet_quoted_urls')
+        print(retweet_quoted_urls)
+        print('retweet_quoted_indices')
+        print(retweet_quoted_indices)
+        print("----------------")
 
         # print(parsed_token_list)
         ###############################
-
 
         # if len(parsed_token_list) > 0:
         #     for term in parsed_token_list:
@@ -124,35 +131,37 @@ class Parse:
         # entities = self.parse_entities(full_text)
         # entities = []
 
-        # for i, token in enumerate(self.tokens):
-        #
-        #     number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-        #                   "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
-        #
-        #     if token.isalpha():  #: capital letters
-        #         self.check_if_capital(token)
-        #
-        #     if token.startswith('@'):  #: @ sign
-        #         if i < len(self.tokens) - 1:
-        #             parsed_token_list = list(token + self.tokens[i + 1])
-        #
-        #     elif token.startswith('#'):  #: # sign
-        #         parsed_token_list = self.parse_hashtag(token)
-        #
-        #     elif len(number_as_list) != 0:  #: numbers
-        #         if i == 0 and i < len(self.tokens) - 1:
-        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
-        #         elif i < len(self.tokens) - 1:
-        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
-        #         else:
-        #             parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
-        #
-        #     if len(parsed_token_list) > 0:
-        #         for term in parsed_token_list:
-        #             if term not in term_dict.keys():
-        #                 term_dict[term] = 1
-        #             else:
-        #                 term_dict[term] += 1
+        parsed_token_list = []
+        parsed_token_list = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)  #TODO: send to break down urls
+        for i, token in enumerate(self.tokens):
+
+            number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
+                          "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
+
+            if token.isalpha():  #: capital letters
+                self.check_if_capital(token)
+
+            if token.startswith('@'):  #: @ sign
+                if i < len(self.tokens) - 1:
+                    parsed_token_list = list(token + self.tokens[i + 1])
+
+            elif token.startswith('#'):  #: # sign
+                parsed_token_list = self.parse_hashtag(token)
+
+            elif len(number_as_list) != 0:  #: numbers
+                if i == 0 and i < len(self.tokens) - 1:
+                    parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
+                elif i < len(self.tokens) - 1:
+                    parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
+                else:
+                    parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
+
+            # if len(parsed_token_list) > 0:
+            #     for term in parsed_token_list:
+            #         if term not in term_dict.keys():
+            #             term_dict[term] = 1
+            #         else:
+            #             term_dict[term] += 1
         #############################
 
         doc_length = len(tokenized_text)  # after text operations.
@@ -314,23 +323,25 @@ class Parse:
 
         return entity_list
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
-        parsed_token_list = []
+        parsed_token_list = set()
         input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
                 parsed_token_list = self.parse_url_text(url_from_text)
-        for url in input_list:
-            if url is not None or url != "{}":
-                url_str_as_list = url[2:-2]
+        for urls in input_list:
+            if urls is not None and urls != "{}":
+                url_str_as_list = urls[2:-2]
                 url_str_as_list = url_str_as_list.replace("null", "\"null\"")
-                dict_as_list = re.sub('(":")+', "\" \"", url_str_as_list)
+                dict_as_list = re.sub('(":")+''|(",")+', "\" \"", url_str_as_list)
+                # dict_as_list = re.sub('(",")+', "\" \"", dict_as_list)
+
 
                 list_url = dict_as_list.split(" ")
                 i = 0
                 for key in list_url:
-                    if key != "null" and i % 2 != 0:
-                        parsed_token_list.append(key)
+                    if key != "\"null\"" and i % 2 != 0:
+                        parsed_token_list.add(key)
                     i = i+1
         return parsed_token_list
 
