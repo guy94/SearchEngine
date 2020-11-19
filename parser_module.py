@@ -74,19 +74,44 @@ class Parse:
 
         last_number_parsed = None
         count_num_in_a_row = 0
-        test_text = "#covid-19 5 thousands in his pocket #rakBibi covid-19 @bibinetanyahu call 555-888 if you have 50$"
+        test_text = "Gal Masud-Baneim Third of his name"
         test_tokens = word_tokenize(test_text)
         self.tokens = test_tokens
         entity_counter = 1
         for i, token in enumerate(self.tokens):
+
+            if entity_counter > 1:
+                entity_counter -= 1
+
             parsed_token_list = []
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                         "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
 
             is_date = self.parse_date(token)
 
-            if token.isalpha():  #: capital letters
+            if "-" in token and not token.startswith("-"):  # not a number starts with "-". example covid-19
+                token_before = ""
+                if i > 0:
+                    token_before = self.tokens[i-1]
+                parsed_token_list = self.parse_hyphen(token, token_before)
+                count_num_in_a_row = 0
+
+            elif token.isalpha():#: capital letters
+
+                entity_str = ""
+
+                if entity_counter == 1:
+                    while token.istitle() and self.tokens[i + entity_counter].istitle():
+                        entity_str += " " + self.tokens[i + entity_counter]
+                        entity_counter += 1
+                    entity_counter += 1
+
                 self.check_if_capital(token)
+                parsed_token_list.append(token)
+                token += entity_str
+                if entity_str != "":
+                    parsed_token_list.append(token)
+
                 count_num_in_a_row = 0
 
             if token.startswith('@'):  #: @ sign
@@ -98,13 +123,6 @@ class Parse:
                 if i < len(self.tokens) - 1:
                     parsed_token_list = self.parse_hashtag(token + self.tokens[i + 1])
                     count_num_in_a_row = 0
-
-            elif "-" in token and not token.startswith("-"):  # not a number starts with "-". example covid-19
-                token_before = ""
-                if i > 0:
-                    token_before = self.tokens[i-1]
-                parsed_token_list = self.parse_hyphen(token, token_before)
-                count_num_in_a_row = 0
 
             elif is_date:  # date format
                 parsed_token_list = [token]
@@ -176,6 +194,8 @@ class Parse:
             if i != "":
                 if i.isalpha():
                     is_alpha = True
+                    if i.istitle():
+                        self.check_if_capital(i)
             to_return.append(i.lower())
 
         if not is_alpha:
