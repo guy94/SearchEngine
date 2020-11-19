@@ -74,7 +74,7 @@ class Parse:
 
         last_number_parsed = None
         count_num_in_a_row = 0
-        test_text = "#covid-19 5 thousands in his pocket #rakBibi @bibinetanyahu call 555-888 if you have 50$"
+        test_text = "#covid-19 5 thousands in his pocket #rakBibi covid-19 @bibinetanyahu call 555-888 if you have 50$"
         test_tokens = word_tokenize(test_text)
         self.tokens = test_tokens
         entity_counter = 1
@@ -86,11 +86,8 @@ class Parse:
             is_date = self.parse_date(token)
 
             if token.isalpha():  #: capital letters
-                while i + entity_counter < len(self.tokens) and self.tokens[i + entity_counter].istitle():
-                    token += self.tokens[i + entity_counter]
-                entity_counter = 1
-            self.check_if_capital(token)
-            count_num_in_a_row = 0
+                self.check_if_capital(token)
+                count_num_in_a_row = 0
 
             if token.startswith('@'):  #: @ sign
                 if i < len(self.tokens) - 1:
@@ -106,7 +103,7 @@ class Parse:
                 token_before = ""
                 if i > 0:
                     token_before = self.tokens[i-1]
-                hyphen_list = self.parse_hyphen(token, token_before)
+                parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
             elif is_date:  # date format
@@ -187,19 +184,20 @@ class Parse:
         return to_return
 
     def check_if_capital(self, token):  # counting may be unnescesary
-        for ent in token:
-            rest_of_token = ent[1:].upper()
-            ent = ent[0] + rest_of_token
-            if ent.isupper():
-                if ent in Parse.capital_letter_dict:
-                    Parse.capital_letter_dict[ent][1] += 1
-                else:
-                    Parse.capital_letter_dict[ent] = [True, 1]
+        # for ent in token:
+        ent = token
+        rest_of_token = ent[1:].upper()
+        ent = ent[0] + rest_of_token
+        if ent.isupper():
+            if ent in Parse.capital_letter_dict:
+                Parse.capital_letter_dict[ent][1] += 1
             else:
-                new_word = ent.upper()  # title
-                if new_word in Parse.capital_letter_dict:
-                    Parse.capital_letter_dict[new_word][0] = False
-                    Parse.capital_letter_dict[new_word][1] += 1
+                Parse.capital_letter_dict[ent] = [True, 1]
+        else:
+            new_word = ent.upper()  # title
+            if new_word in Parse.capital_letter_dict:
+                Parse.capital_letter_dict[new_word][0] = False
+                Parse.capital_letter_dict[new_word][1] += 1
 
     def parse_hashtag(self, token):
         """
@@ -209,7 +207,7 @@ class Parse:
         """
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
-        # tokens_with_hashtag.extend(([a.lower() for a in re.findall("[A-Z]*[a-z]*", token) if a]))
+        tokens_with_hashtag.append(token)
         if "-" not in token:
             tokens_with_hashtag.extend(([a.lower() for a in re.split('([A-Z][a-z]+)''|^([a-z]+)', token) if a]))
 
@@ -218,16 +216,24 @@ class Parse:
     def parse_url_text(self, urls):
         # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
         to_return = []
+        is_colon_in_domain = False
         for token in urls:
-            domain = urlparse(token[1:-1]).netloc
-            tokenize_url = re.split('[/=:?#]', token[1:-1])
-            index = tokenize_url.index(domain)
+            domain = urlparse(token).netloc
+            tokenize_url = re.split('[:/=?#]', token)
+            if ":" in domain:
+                split_index = domain.index(":")
+                index = tokenize_url.index(domain[:split_index])
+                is_colon_in_domain = True
+            else:
+                index = tokenize_url.index(domain)
             www_str = ''
             if "www." in domain:
                 domain = domain[4:]
                 www_str = "www"
 
             tokenize_url.pop(index)
+            if is_colon_in_domain:
+                tokenize_url.pop(index)
             tokenize_url.insert(index, www_str)
             tokenize_url.insert(index + 1, domain)
 
@@ -347,11 +353,11 @@ class Parse:
             return returnlist
         return [ret]
 
-    def parse_entities(self, token_list):
-        # doc = nlp(token)
-        # entity_list = [i for i in doc.ents]
-
-        return entity_list
+    # def parse_entities(self, token_list):
+    #     # doc = nlp(token)
+    #     # entity_list = [i for i in doc.ents]
+    #
+    #     return entity_list
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         parsed_token_list = set()
