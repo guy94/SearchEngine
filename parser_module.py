@@ -13,14 +13,14 @@ nlp = spacy.load("en_core_web_sm")
 class Parse:
     capital_letter_dict_global = {}
     idx = 0
-    number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-                                "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
-    date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
-    hashtag_pattern = re.compile("([A-Z][a-z]+)""|^([a-z]+)")
-    url_puctuation_pattern = re.compile("[:/=?#]")
-    str_no_commas_pattern = re.compile("[^-?\d\./]")
-    url_pattern = re.compile("(?P<url>https?://[^\s]+)")
-    split_url_pattern = re.compile(r"[\w'|.|-]+")
+    # number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
+    #                             "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
+    # date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
+    # hashtag_pattern = re.compile("([A-Z][a-z]+)""|^([a-z]+)")
+    # url_puctuation_pattern = re.compile("[:/=?#]")
+    # str_no_commas_pattern = re.compile("[^-?\d\./]")
+    # url_pattern = re.compile("(?P<url>https?://[^\s]+)")
+    # split_url_pattern = re.compile(r"[\w'|.|-]+")
     entity_dict_global = {}
 
     def __init__(self):
@@ -34,6 +34,15 @@ class Parse:
 
         self.entity_dict = {}
         self.capital_letter_dict = {}
+
+        self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
+                                    "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
+        self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
+        self.hashtag_pattern = re.compile("([A-Z][a-z]+)""|^([a-z]+)")
+        self.url_puctuation_pattern = re.compile("[:/=?#]")
+        self.str_no_commas_pattern = re.compile("[^-?\d\./]")
+        self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
+        self.split_url_pattern = re.compile(r"[\w'|.|-]+")
 
     def parse_sentence(self, text):
         """
@@ -112,7 +121,7 @@ class Parse:
             number_as_list = []
 
             if not any(c.isalpha() for c in token):
-                number_as_list = Parse.number_pattern.findall(token)
+                number_as_list = self.number_pattern.findall(token)
 
                 is_date = self.parse_date(token)  #: date format
 
@@ -215,7 +224,7 @@ class Parse:
         return document
 
     def parse_date(self, token):
-        date_list = Parse.date_pattern.findall(token)
+        date_list = self.date_pattern.findall(token)
         if len(date_list) > 0:
             return True
 
@@ -261,7 +270,6 @@ class Parse:
                 Parse.capital_letter_dict_global[new_word] = False
                 return ent.lower()
 
-
     def parse_hashtag(self, token):
         """
         hashtags parsing
@@ -272,7 +280,7 @@ class Parse:
         token = token.split("#")[1]
         tokens_with_hashtag.append(token)
         if "-" not in token:
-            tokens_with_hashtag.extend(([a.lower() for a in Parse.hashtag_pattern.split(token) if a]))
+            tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
 
         return tokens_with_hashtag
 
@@ -285,7 +293,7 @@ class Parse:
             # domain = urlparse(token).netloc
 
             ###################
-            url = Parse.split_url_pattern.findall(token)
+            url = self.split_url_pattern.findall(token)
 
             for i, elem in enumerate(url):
                 if 'www' in elem:
@@ -321,7 +329,7 @@ class Parse:
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
-        str_no_commas = Parse.str_no_commas_pattern.sub("", number_as_str)
+        str_no_commas = self.str_no_commas_pattern.sub("", number_as_str)
         signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
                  '%': '%'}
         quantities = {"thousands", "thousand", "millions", "million", "billions", "billion"}
@@ -442,7 +450,7 @@ class Parse:
         if url == "{}":
             # if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
             #     url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
-            url_from_text = Parse.url_pattern.findall(full_text)
+            url_from_text = self.url_pattern.findall(full_text)
             if len(url_from_text) > 0:
                 parsed_token_list.add(url_from_text[0])
 
