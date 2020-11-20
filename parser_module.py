@@ -67,8 +67,9 @@ class Parse:
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
 
-        concatenated_text = self.concatenate_tweets(full_text, retweet_quoted_text, quoted_text)
+        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
         tokenized_text = self.parse_sentence(concatenated_text)
+        # tokenized_text = self.parse_sentence("Gal have 50% The Third of his name")
         term_dict = {}
 
 
@@ -81,6 +82,20 @@ class Parse:
         # self.tes_func()
         # entities = self.parse_entities(full_text)
         # entities = []
+        print('------------')
+        print('full text')
+        print(concatenated_text)
+        print('------------')
+
+        # if full_text[-1] == "…":
+        #     print('------------')
+        #     print('full text')
+        #     print(full_text)
+        #     print('------------')
+        #     print('re text')
+        #     print('------------')
+        #     print(retweet_text)
+        #     print('------------')
 
         raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
         broken_urls = self.parse_url_text(raw_urls)
@@ -94,7 +109,7 @@ class Parse:
 
         ######
         # test_text = " Thnx Neil, Always love singing along with you. 50% #covid-19 @RakBibi .25 million Gal Masud-Baneim Third of his name"
-        # test_text = " #RakBibi let's eat hamburger 50 3/4$"
+
         # test_tokens = word_tokenize(test_text)
         # self.tokens = test_tokens
         ######
@@ -195,14 +210,16 @@ class Parse:
                         term_dict[token] += 1
 
         doc_length = len(tokenized_text)  # after text operations.
-
+        print('split text')
+        print(term_dict)
+        print('------------')
         # for term in tokenized_text:
         #     if term not in term_dict.keys():
         #         term_dict[term] = 1
         #     else:
         #         term_dict[term] += 1
 
-        document = Document(tweet_id, self.entity_dict, self.capital_letter_dict, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
+        document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
 
         # print("full text" + full_text)
@@ -223,9 +240,11 @@ class Parse:
 
     def parse_hyphen(self, token, token_before):
         """
-        :param token:
-        :return: list of a parsed phrase split by a hyphen
+        :param token: example --> covid-19
+        :param token_before: example --> @,%,# to verify how to split
+        :return: list of a parsed phrase split by a hyphen --> [covid-19,covid,19]
         """
+
         to_return = []
         if token_before != "@" and token_before != "#":
             to_return = [token]
@@ -245,7 +264,11 @@ class Parse:
 
         return to_return
 
-    def check_if_capital(self, token):  # counting may be unnescesary
+    def check_if_capital(self, token):
+        """
+        :param token: example --> Obama,obama
+        :return: the token as Upper or Lower and add them to the Global dict
+        """
         # for ent in token:
         ent = token
         rest_of_token = ent[1:].upper()
@@ -253,13 +276,15 @@ class Parse:
         if ent.isupper():
             if ent not in Parse.capital_letter_dict_global:
                 Parse.capital_letter_dict_global[ent] = True
-                return ent
+            return ent
 
         else:
             new_word = ent.upper()  # title
             if new_word in Parse.capital_letter_dict_global:
                 Parse.capital_letter_dict_global[new_word] = False
-                return ent.lower()
+
+            lower = ent.lower()
+            return lower
 
 
     def parse_hashtag(self, token):
@@ -277,7 +302,10 @@ class Parse:
         return tokens_with_hashtag
 
     def parse_url_text(self, urls):
-
+        """
+        :param urls: example --> https://www.instagram.com/p/CD7fAPWs3WM/?igshid=o9kf0ugp1l8x
+        :return: list of a parsed phrase split by set of rules --> [https, www, instagram.com, p, CD7fAPWs3WM , igshid , o9kf0ugp1l8x]
+        """
         to_return = []
         is_colon_in_domain = False
         for token in urls:
@@ -321,6 +349,13 @@ class Parse:
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
+        """
+        :param number_as_str: example -->  a number to split
+        :param word_before: example --> can be a sign
+        :param word_after: example --> can be a sign or quantity
+        :return: list of a parsed phrase split by set of rules
+        """
+
         str_no_commas = Parse.str_no_commas_pattern.sub("", number_as_str)
         signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
                  '%': '%'}
@@ -437,6 +472,15 @@ class Parse:
     #     return entity_list
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
+        """
+          :param url:
+          :param retweet_url:
+          :param quote_url:
+          :param retweet_quoted_urls:
+          :param full_text: original tweet text
+          :return: return a set of the related url to the original tweet
+          """
+
         parsed_token_list = set()
         input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
         if url == "{}":
@@ -459,6 +503,10 @@ class Parse:
         return parsed_token_list
 
     def indices_as_list(self, indices):
+        """
+        :param indices: example --> '[174,203]'
+        :return: list of the indices as integers
+        """
         indices_as_list = []
         if (indices is not None) and (indices != ""):
             indices_as_list = (list(filter(''.__ne__, re.findall("\d*", indices))))
@@ -472,8 +520,15 @@ class Parse:
     #         tokenized_quoted_text = self.parse_sentence(text)
     #         self.tokens = self.tokens + tokenized_quoted_text
 
-    def concatenate_tweets(self, tweet, retweet_quoted_text, quoted_text):
+    def concatenate_tweets(self, tweet, retweet_text, retweet_quoted_text, quoted_text):
 
+        """
+          :param tweet:
+          :param retweet_text:
+          :param retweet_quoted_text:
+          :param quoted_text:
+          :return: connect the text together depends on their existences
+          """
         tweet_to_return = tweet
         if retweet_quoted_text is not None:
             tweet_to_return += " "
