@@ -4,6 +4,7 @@ import spacy
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from document import Document
+import json
 
 nlp = spacy.load("en_core_web_sm")
 
@@ -25,7 +26,7 @@ class Parse:
         """
         text_tokens = word_tokenize(text)
         self.tokens = text_tokens
-        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words]
+        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words and w.isalpha()]
         return text_tokens_without_stopwords
 
     def parse_doc(self, doc_as_list):
@@ -63,18 +64,19 @@ class Parse:
         # entities = self.parse_entities(full_text)
         # entities = []
 
-        broken_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
-        broken_urls = self.parse_url_text(broken_urls)
+        raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
+        broken_urls = self.parse_url_text(raw_urls)
 
-        # for term in broken_urls:
-        #     if term not in term_dict.keys():
-        #         term_dict[term] = 1
-        #     else:
-        #         term_dict[term] += 1
+        for term in broken_urls:
+            if "http" not in term:
+                if term not in term_dict.keys():
+                    term_dict[term] = 1
+                else:
+                    term_dict[term] += 1
 
         last_number_parsed = None
         count_num_in_a_row = 0
-        test_text = "Gal Masud-Baneim Third of his name"
+        test_text = " Thnx Neil, Always love singing along with you. 50% #covid-19 @RakBibi .25 million Gal Masud-Baneim Third of his name"
         test_tokens = word_tokenize(test_text)
         self.tokens = test_tokens
         entity_counter = 1
@@ -87,7 +89,7 @@ class Parse:
             number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                         "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
 
-            is_date = self.parse_date(token)
+            is_date = self.parse_date(token)  #: date format
 
             if "-" in token and not token.startswith("-"):  # not a number starts with "-". example covid-19
                 token_before = ""
@@ -96,12 +98,11 @@ class Parse:
                 parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
-            elif token.isalpha():#: capital letters
+            elif token.isalpha():  #: capital letters and entities
 
                 entity_str = ""
-
                 if entity_counter == 1:
-                    while token.istitle() and self.tokens[i + entity_counter].istitle():
+                    while token.istitle() and i + entity_counter < len(self.tokens) and self.tokens[i + entity_counter].istitle():
                         entity_str += " " + self.tokens[i + entity_counter]
                         entity_counter += 1
                     entity_counter += 1
@@ -140,7 +141,7 @@ class Parse:
                     else:
                         parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
 
-                    if count_num_in_a_row == 2 and len(parsed_token_list) == 2:  # this block is for numbers like 25 3/4 that appear together
+                    if count_num_in_a_row == 2 and len(parsed_token_list) == 2:  # for numbers like 25 3/4 that appear together
                         parsed_token_list = [last_number_parsed + " " + parsed_token_list[1]]
                         count_num_in_a_row = 0
                         del term_dict[last_number_parsed]
@@ -148,6 +149,9 @@ class Parse:
                         last_number_parsed = parsed_token_list[0]
                 else:
                     parsed_token_list = number_as_list
+
+            # else:
+            #     parsed_token_list = token
 
             if len(parsed_token_list) > 0:
                 for term in parsed_token_list:
@@ -159,16 +163,19 @@ class Parse:
 
         doc_length = len(tokenized_text)  # after text operations.
 
-        # for term in tokenized_text:
-        #     if term not in term_dict.keys():
-        #         term_dict[term] = 1
-        #     else:
-        #         term_dict[term] += 1
+        for term in tokenized_text:
+            if term not in term_dict.keys():
+                term_dict[term] = 1
+            else:
+                term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
-        # print(term_dict)
-        # print("--------------------")
+        print(full_text)
+        print(quoted_text)
+        print(self.tokens)
+        print(term_dict)
+        print("--------------------")
         return document
 
     def parse_date(self, token):
@@ -385,18 +392,26 @@ class Parse:
         if url == "":
             if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
                 url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
-                raw_token_list = self.parse_url_text(url_from_text)
+                parsed_token_list.add(url_from_text)
+
         for urls in input_list:
             if urls is not None and urls != "{}":
-                url_str_as_list = urls[2:-2]
-                url_str_as_list = url_str_as_list.replace("null", "\"null\"")
-                dict_as_list = re.sub('(":")+''|(",")+', "\" \"", url_str_as_list)
-
-                list_url = dict_as_list.split(" ")
-                i = 0
-                for i, key in enumerate(list_url):
-                    if key != "\"null\"" and i % 2 != 0:
+                url_as_dict = (json.loads(urls))
+                for key in url_as_dict.keys():
+                    if url_as_dict[key] is None:
                         parsed_token_list.add(key)
+                    else:
+                        parsed_token_list.add(url_as_dict[key])
+
+                # url_str_as_list = urls[2:-2]
+                # url_str_as_list = url_str_as_list.replace("null", "\"null\"")
+                # dict_as_list = re.sub('(":")+''|(",")+', "\" \"", url_str_as_list)
+                #
+                # list_url = dict_as_list.split(" ")
+                # i = 0
+                # for i, key in enumerate(list_url):
+                #     if key != "\"null\"" and i % 2 != 0:
+                #         parsed_token_list.add(key)
         return parsed_token_list
 
     def indices_as_list(self, indices):

@@ -30,8 +30,8 @@ def run_engine():
     # parsed_document = p.parse_doc(documents_list[112])
     # parsed_document = p.parse_doc(documents_list[2792])
     # parsed_document = p.parse_doc(documents_list[158874])
-    for i in range(len(documents_list)):
-        # print(str(number_of_documents))
+    for i in range(2791, len(documents_list)):
+        print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         number_of_documents += 1
 
