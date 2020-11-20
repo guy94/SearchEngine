@@ -1,3 +1,6 @@
+from parser_module import Parse
+
+
 class Indexer:
 
     def __init__(self, config):
@@ -28,3 +31,24 @@ class Indexer:
 
             except:
                 print('problem with the following key {}'.format(term[0]))
+
+    def remove_capital_entity(self):
+
+        entity_dict_keys = Parse.entity_dict_global.keys()
+        for key in entity_dict_keys:
+            if Parse.entity_dict_global[key] < 2:
+                self.inverted_idx.remove(key)
+                self.postingDict.remove(key)
+
+        capital_dict_keys = Parse.capital_letter_dict_global.keys()
+        for key in capital_dict_keys:
+            if Parse.capital_letter_dict_global[key] is False:
+                if key in self.inverted_idx.keys():
+                    count_docs = self.inverted_idx[key]
+                    posting_file = self.postingDict[key]
+                    self.inverted_idx.remove(key)
+                    self.postingDict.remove(key)
+                    self.inverted_idx[key.lower()] += count_docs
+                    self.postingDict[key.lower()].extend(posting_file)
+
+

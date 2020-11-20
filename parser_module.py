@@ -5,14 +5,14 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from document import Document
 import json
-
+import json
 nlp = spacy.load("en_core_web_sm")
 
 
 class Parse:
-    capital_letter_dict = {}
+    capital_letter_dict_global = {}
     idx = 0
-
+    entity_dict_global = {}
     def __init__(self):
         self.stop_words = stopwords.words('english')
         self.tokens = None
@@ -53,6 +53,7 @@ class Parse:
         concatenated_text = self.concatenate_tweets(full_text, retweet_quoted_text, quoted_text)
         tokenized_text = self.parse_sentence(concatenated_text)
         term_dict = {}
+
 
         ########################################
         # TODO: check if indices needed
@@ -107,11 +108,15 @@ class Parse:
                         entity_counter += 1
                     entity_counter += 1
 
-                self.check_if_capital(token)
-                parsed_token_list.append(token)
+                parsed_token_list.append(self.check_if_capital(token))
                 token += entity_str
                 if entity_str != "":
                     parsed_token_list.append(token)
+
+                    if token not in Parse.capital_letter_dict_global.keys():
+                        Parse.capital_letter_dict_global[token] = 1
+                    else:
+                        Parse.capital_letter_dict_global[token] += 1
 
                 count_num_in_a_row = 0
 
@@ -169,7 +174,7 @@ class Parse:
             else:
                 term_dict[term] += 1
 
-        document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
+        document = Document(tweet_id, self.entity_dict, self.capital_letter_dict, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
         print(full_text)
         print(quoted_text)
@@ -216,21 +221,22 @@ class Parse:
         rest_of_token = ent[1:].upper()
         ent = ent[0] + rest_of_token
         if ent.isupper():
-            if ent in Parse.capital_letter_dict:
-                Parse.capital_letter_dict[ent][1] += 1
-            else:
-                Parse.capital_letter_dict[ent] = [True, 1]
+            if ent not in Parse.capital_letter_dict_global:
+                Parse.capital_letter_dict_global[ent] = True
+                return ent
+
         else:
             new_word = ent.upper()  # title
-            if new_word in Parse.capital_letter_dict:
-                Parse.capital_letter_dict[new_word][0] = False
-                Parse.capital_letter_dict[new_word][1] += 1
+            if new_word in Parse.capital_letter_dict_global:
+                Parse.capital_letter_dict_global[new_word] = False
+                return ent.lower()
+
 
     def parse_hashtag(self, token):
         """
         hashtags parsing
-        :param token:
-        :return: list of a decomposed hashtag
+        :param token: example --> #stay_at_home
+        :return: list of a decomposed hashtag --> [stay,at,home,#stayathome]
         """
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
@@ -521,3 +527,5 @@ class Parse:
         # print(self.parse_numbers(s11, "BiliOn", None))
 
         x = 9
+
+
