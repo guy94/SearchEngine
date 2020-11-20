@@ -1,4 +1,5 @@
 import re
+import string
 from urllib.parse import urlparse
 import spacy
 from nltk.corpus import stopwords
@@ -12,11 +13,23 @@ nlp = spacy.load("en_core_web_sm")
 class Parse:
     capital_letter_dict = {}
     idx = 0
+    number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
+                                "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
+    date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
+    hashtag_pattern = re.compile("([A-Z][a-z]+)""|^([a-z]+)")
+    url_puctuation_pattern = re.compile("[:/=?#]")
+    str_no_commas_pattern = re.compile("[^-?\d\./]")
+    url_pattern = re.compile("(?P<url>https?://[^\s]+)")
+    split_url_pattern = re.compile(r"[\w'|.|-]+")
 
     def __init__(self):
         self.stop_words = stopwords.words('english')
+        self.stop_words.append(r't')
+
+        self.stop_words_dict = dict.fromkeys(self.stop_words)
         self.tokens = None
         self.is_num_after_num = False
+        self.dict_punctuation = dict.fromkeys(string.punctuation)
 
     def parse_sentence(self, text):
         """
@@ -26,7 +39,7 @@ class Parse:
         """
         text_tokens = word_tokenize(text)
         self.tokens = text_tokens
-        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words and w.isalpha()]
+        text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words_dict and w.isalpha()]
         return text_tokens_without_stopwords
 
     def parse_doc(self, doc_as_list):
@@ -69,32 +82,39 @@ class Parse:
 
         for term in broken_urls:
             if "http" not in term:
-                if term not in term_dict.keys():
+                if term not in term_dict:
                     term_dict[term] = 1
                 else:
                     term_dict[term] += 1
 
+        ######
+        # test_text = " Thnx Neil, Always love singing along with you. 50% #covid-19 @RakBibi .25 million Gal Masud-Baneim Third of his name"
+        # test_text = " #RakBibi let's eat hamburger 50 3/4$"
+        # test_tokens = word_tokenize(test_text)
+        # self.tokens = test_tokens
+        ######
+
         last_number_parsed = None
         count_num_in_a_row = 0
-        test_text = " Thnx Neil, Always love singing along with you. 50% #covid-19 @RakBibi .25 million Gal Masud-Baneim Third of his name"
-        test_tokens = word_tokenize(test_text)
-        self.tokens = test_tokens
         entity_counter = 1
-        for i, token in enumerate(self.tokens):
+        is_date = False
 
+        for i, token in enumerate(self.tokens):
             if entity_counter > 1:
                 entity_counter -= 1
 
             parsed_token_list = []
-            number_as_list = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-                                        "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?", token)
+            number_as_list = []
 
-            is_date = self.parse_date(token)  #: date format
+            if not any(c.isalpha() for c in token):
+                number_as_list = Parse.number_pattern.findall(token)
+
+                is_date = self.parse_date(token)  #: date format
 
             if "-" in token and not token.startswith("-"):  # not a number starts with "-". example covid-19
                 token_before = ""
                 if i > 0:
-                    token_before = self.tokens[i-1]
+                    token_before = self.tokens[i - 1]
                 parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
@@ -124,6 +144,7 @@ class Parse:
                 if i < len(self.tokens) - 1:
                     parsed_token_list = self.parse_hashtag(token + self.tokens[i + 1])
                     count_num_in_a_row = 0
+                    self.tokens.pop(i+1)
 
             elif is_date:  # date format
                 parsed_token_list = [token]
@@ -136,12 +157,12 @@ class Parse:
                     if i == 0 and i < len(self.tokens) - 1:
                         parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
                     elif i < len(self.tokens) - 1:
-                        parsed_token_list = list(
-                            self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
+                        parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
                     else:
                         parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
 
-                    if count_num_in_a_row == 2 and len(parsed_token_list) == 2:  # for numbers like 25 3/4 that appear together
+                    if count_num_in_a_row == 2 and len(
+                            parsed_token_list) == 2:  # for numbers like 25 3/4 that appear together
                         parsed_token_list = [last_number_parsed + " " + parsed_token_list[1]]
                         count_num_in_a_row = 0
                         del term_dict[last_number_parsed]
@@ -150,38 +171,43 @@ class Parse:
                 else:
                     parsed_token_list = number_as_list
 
-            # else:
-            #     parsed_token_list = token
-
             if len(parsed_token_list) > 0:
                 for term in parsed_token_list:
-                    if term not in term_dict.keys():
+                    if term not in term_dict:
                         term_dict[term] = 1
                     else:
                         term_dict[term] += 1
         #############################
+            else:
+                if token not in self.dict_punctuation:
+                    if token not in term_dict:
+                        term_dict[token] = 1
+                    else:
+                        term_dict[token] += 1
 
         doc_length = len(tokenized_text)  # after text operations.
 
-        for term in tokenized_text:
-            if term not in term_dict.keys():
-                term_dict[term] = 1
-            else:
-                term_dict[term] += 1
+        # for term in tokenized_text:
+        #     if term not in term_dict.keys():
+        #         term_dict[term] = 1
+        #     else:
+        #         term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
-        print(full_text)
-        print(quoted_text)
-        print(self.tokens)
-        print(term_dict)
-        print("--------------------")
+
+        # print("full text" + full_text)
+        # print()
+        # print(tokenized_text)
+        # # print(quoted_text)
+        # print(self.tokens)
+        # print("term_dict: " + str(term_dict))
+        # print("--------------------")
         return document
 
     def parse_date(self, token):
-        date_list = re.findall("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}", token)
+        date_list = Parse.date_pattern.findall(token)
         if len(date_list) > 0:
-            # print(date_list)
             return True
 
         return False
@@ -236,45 +262,59 @@ class Parse:
         token = token.split("#")[1]
         tokens_with_hashtag.append(token)
         if "-" not in token:
-            tokens_with_hashtag.extend(([a.lower() for a in re.split('([A-Z][a-z]+)''|^([a-z]+)', token) if a]))
+            tokens_with_hashtag.extend(([a.lower() for a in Parse.hashtag_pattern.split(token) if a]))
 
         return tokens_with_hashtag
 
     def parse_url_text(self, urls):
-        # domain = list(re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
+
         to_return = []
         is_colon_in_domain = False
         for token in urls:
-            domain = urlparse(token).netloc
-            tokenize_url = re.split('[:/=?#]', token)
-            if ":" in domain:
-                split_index = domain.index(":")
-                index = tokenize_url.index(domain[:split_index])
-                is_colon_in_domain = True
-            else:
-                index = tokenize_url.index(domain)
-            www_str = ''
-            if "www." in domain:
-                domain = domain[4:]
-                www_str = "www"
+            # domain = (re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
+            # domain = urlparse(token).netloc
 
-            tokenize_url.pop(index)
-            if is_colon_in_domain:
-                tokenize_url.pop(index)
-            tokenize_url.insert(index, www_str)
-            tokenize_url.insert(index + 1, domain)
+            ###################
+            url = Parse.split_url_pattern.findall(token)
 
-            for i in range(len(tokenize_url)):
-                if tokenize_url[i] != "":
-                    to_return.append(tokenize_url[i])
+            for i, elem in enumerate(url):
+                if 'www' in elem:
+                    address = url[i].split('.', 1)
+                    url[i] = address[1]
+                    url.insert(i, address[0])
+            to_return.extend(url)
+
+            ####################
+
+            # tokenize_url = Parse.url_puctuation_pattern.split(token)
+            # if ":" in domain:
+            #     split_index = domain.index(":")
+            #     index = tokenize_url.index(domain[:split_index])
+            #     is_colon_in_domain = True
+            # else:
+            #     index = tokenize_url.index(domain)
+            # www_str = ''
+            # if "www." in domain:
+            #     domain = domain[4:]
+            #     www_str = "www"
+            #
+            # tokenize_url.pop(index)
+            # if is_colon_in_domain:
+            #     tokenize_url.pop(index)
+            # tokenize_url.insert(index, www_str)
+            # tokenize_url.insert(index + 1, domain)
+            #
+            # for i in range(len(tokenize_url)):
+            #     if tokenize_url[i] != "":
+            #         to_return.append(tokenize_url[i])
 
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
-        str_no_commas = re.sub("[^-?\d\./]", "", number_as_str)
+        str_no_commas = Parse.str_no_commas_pattern.sub("", number_as_str)
         signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
                  '%': '%'}
-        quantities = ["thousands", "thousand", "millions", "million", "billions", "billion"]
+        quantities = {"thousands", "thousand", "millions", "million", "billions", "billion"}
         quantity = ""
         result = ""
         alpha = ''
@@ -298,9 +338,9 @@ class Parse:
         elif "." in str_no_commas:
             amount_of_dots = str_no_commas.count(".")
             if amount_of_dots > 1:
-                if not str_no_commas.startswith("."):
+                # if not str_no_commas.startswith("."):
                     return [str_no_commas]
-                str_no_commas = str_no_commas[1:]
+                # str_no_commas = str_no_commas[1:]
             as_number = float("{:.3f}".format(float(str_no_commas)))
         else:
             as_number = int(str_no_commas)
@@ -389,13 +429,16 @@ class Parse:
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         parsed_token_list = set()
         input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
-        if url == "":
-            if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
-                url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
-                parsed_token_list.add(url_from_text)
+        if url == "{}":
+            # if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
+            #     url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
+            url_from_text = Parse.url_pattern.findall(full_text)
+            if len(url_from_text) > 0:
+                parsed_token_list.add(url_from_text[0])
 
         for urls in input_list:
             if urls is not None and urls != "{}":
+
                 url_as_dict = (json.loads(urls))
                 for key in url_as_dict.keys():
                     if url_as_dict[key] is None:
@@ -403,15 +446,6 @@ class Parse:
                     else:
                         parsed_token_list.add(url_as_dict[key])
 
-                # url_str_as_list = urls[2:-2]
-                # url_str_as_list = url_str_as_list.replace("null", "\"null\"")
-                # dict_as_list = re.sub('(":")+''|(",")+', "\" \"", url_str_as_list)
-                #
-                # list_url = dict_as_list.split(" ")
-                # i = 0
-                # for i, key in enumerate(list_url):
-                #     if key != "\"null\"" and i % 2 != 0:
-                #         parsed_token_list.add(key)
         return parsed_token_list
 
     def indices_as_list(self, indices):
@@ -460,7 +494,6 @@ class Parse:
         # print(self.parse_date(s2))
         # print(self.parse_date(s3))
 
-
         ######### checking parse_date #########
 
         # s1 = "covid-19"
@@ -475,8 +508,6 @@ class Parse:
         # print(self.parse_date(s3))
         # print(self.parse_date(s4))
         # print(self.parse_date(s5))
-
-
 
         ###### checking capitals######
         # self.check_if_capital("FirSt")
