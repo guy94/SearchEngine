@@ -29,7 +29,8 @@ class Parse:
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                     "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
         self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
-        self.hashtag_pattern = re.compile("([A-Z][a-z]+)""|^([a-z]+)")
+        self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?_([A-Z]*[a-z]*)([\d]*)?")
+        # self.hashtag_pattern = re.compile("([A-Z]+[a-z]+)""|([a-z]+)*""|^([a-z]+)")
         self.url_puctuation_pattern = re.compile("[:/=?#]")
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
         self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
@@ -69,7 +70,10 @@ class Parse:
         retweet_quoted_indices = doc_as_list[13]
 
         concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        tokenized_text = self.parse_sentence(concatenated_text)
+        tokenized_text = self.parse_sentence("#BreakingNews")
+        #tokenized_text = self.parse_sentence(concatenated_text)
+
+
 
         ########################################
         # TODO: check if indices needed
@@ -87,6 +91,7 @@ class Parse:
         entity_counter = 1
         is_date = False
         term_dict = {}
+        is_hashteg = True
 
         for term in broken_urls:
             if "http" not in term:
@@ -120,7 +125,7 @@ class Parse:
                 parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
-            elif token.isalpha():  #: capital letters and entities
+            elif token.isalpha() :  #: capital letters and entities
 
                 entity_str = ""
                 if entity_counter == 1:
@@ -152,6 +157,7 @@ class Parse:
                     parsed_token_list = self.parse_hashtag(token + self.tokens[i + 1])
                     count_num_in_a_row = 0
                     self.tokens.pop(i+1)
+
 
             elif is_date:  # date format
                 parsed_token_list = [token]
@@ -204,13 +210,11 @@ class Parse:
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
 
-        # print("full text" + full_text)
-        # print()
-        # print(tokenized_text)
-        # # print(quoted_text)
-        # print(self.tokens)
-        # print("term_dict: " + str(term_dict))
-        # print("--------------------")
+        print("full text" + concatenated_text)
+        print("--------------------")
+        print("urls" + str(broken_urls))
+        print("term_dict: " + str(term_dict))
+        print("--------------------")
         return document
 
     def parse_date(self, token):
@@ -274,10 +278,12 @@ class Parse:
         :param token: example --> #stay_at_home
         :return: list of a decomposed hashtag --> [stay,at,home,#stayathome]
         """
+        #token = re.sub('[_]', '', token)
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
-        tokens_with_hashtag.append(token)
+        #tokens_with_hashtag.append(token)
         if "-" not in token:
+            to_see = self.hashtag_pattern.split(token)
             tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
 
         return tokens_with_hashtag
