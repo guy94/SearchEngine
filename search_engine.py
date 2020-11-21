@@ -19,22 +19,23 @@ def run_engine():
     p = Parse()
     indexer = Indexer(config)
 
-    start = time.time()
+
     corpus_list = r.read_corpus()
     # for i in range(len(corpus_list)):
     # documents_list = r.read_file(file_name='sample3.parquet')
 
-
+    start = time.time()
     documents_list = r.read_file(file_name=corpus_list[0])
     # parsed_document = p.parse_doc(documents_list[249863])
     # parsed_document = p.parse_doc(documents_list[2792])
-    # parsed_document = p.parse_doc(documents_list[158874])
+    parsed_document = p.parse_doc(documents_list[4])
 
-    for i in range(10000):
-        print(str(number_of_documents))
+    for i in range(20000):
+        # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         number_of_documents += 1
 
+    # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
     #     print(number_of_documents)
