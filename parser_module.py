@@ -96,9 +96,9 @@ class Parse:
                     term_dict[term] += 1
 
         ######
-        # test_text = " Thnx Neil, Always love singing along with you. 50% #covid-19 @RakBibi .25 million Gal Masud-Baneim Third of his name"
-        # test_tokens = word_tokenize(test_text)
-        # self.tokens = test_tokens
+        test_text = "1.6e-06"
+        test_tokens = word_tokenize(test_text)
+        self.tokens = test_tokens
         ######
 
         for i, token in enumerate(self.tokens):
