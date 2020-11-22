@@ -3,7 +3,6 @@ import time
 from parser_module import Parse
 import _pickle as pickle
 import bisect
-from collections import OrderedDict
 
 class Indexer:
     pickle_counter = 1
@@ -42,16 +41,6 @@ class Indexer:
 
                 if self.num_of_docs == 500:
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
-
-                    # keys = list(sorted_keys_dict.keys())
-                    # for key in keys:
-                    #     lst = self.postingDict[key]
-                    #     for i in range(len(lst) - 1):
-                    #         if lst[i] > lst[i + 1]:
-                    #             print(False)
-                    # for i in range(len(keys) - 1):
-                    #     if keys[i] > keys[i + 1]:
-                    #         print(False)
 
                     pickle_out = open("postings\\posting_{}".format(Indexer.pickle_counter), "wb")
                     pickle.dump(sorted_keys_dict, pickle_out)
