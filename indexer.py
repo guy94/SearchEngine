@@ -6,7 +6,8 @@ import bisect
 
 
 class Indexer:
-    pickle_counter = 1
+    PICKLE_COUNTER = 1
+    NUM_OF_DOCS_IN_POSTINGS = 500
 
     def __init__(self, config):
         self.inverted_idx = {}
@@ -21,14 +22,14 @@ class Indexer:
         :param document: a document need to be indexed.
         :return: -
         """
-        term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
-        term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
-        term_merge = self.merge(term1,term2)
+        # term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
+        # term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
+        # term_merge = self.merge(term1, term2)
 
         document_dictionary = document.term_doc_dictionary
+        max_freq_term = document.max_freq_term
         # Go over each term in the doc
 
-         
         for term in document_dictionary.keys():
             try:
                 # Update inverted index and posting
@@ -37,23 +38,24 @@ class Indexer:
                 else:
                     self.inverted_idx[term] += 1
 
+                term_freq = document_dictionary[term]
                 if term not in self.postingDict:
-                    self.postingDict[term] = [(document.tweet_id, document_dictionary[term])]
+                    self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term)]
                 else:
-                    bisect.insort(self.postingDict[term], (document.tweet_id, document_dictionary[term]))
+                    bisect.insort(self.postingDict[term], (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
                 self.num_of_docs += 1
 
-                if self.num_of_docs == 500:
+                if self.num_of_docs == Indexer.NUM_OF_DOCS_IN_POSTINGS:
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
 
-                    pickle_out = open("postings\\posting_{}".format(Indexer.pickle_counter), "wb")
+                    pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "wb")
                     pickle.dump(sorted_keys_dict, pickle_out)
                     pickle_out.close()
 
                     self.num_of_docs = 0
-                    Indexer.pickle_counter += 1
+                    Indexer.PICKLE_COUNTER += 1
                     self.postingDict = {}
 
                     # pickle_in = open("postings\\posting_1", "rb")
@@ -74,7 +76,7 @@ class Indexer:
         capital_dict_keys = Parse.capital_letter_dict_global.keys()
         for key in capital_dict_keys:
             if Parse.capital_letter_dict_global[key] is False:
-                if key in self.inverted_idx.keys():
+                if key in self.inverted_idx:
                     count_docs = self.inverted_idx[key]
                     posting_file = self.postingDict[key]
                     del self.inverted_idx[key]

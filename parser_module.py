@@ -17,19 +17,19 @@ class Parse:
 
     def __init__(self):
         self.stop_words = stopwords.words('english')
-        self.our_stop_words = [r't', "RT", "http", "https"]
+        self.our_stop_words = ["RT", "http", "https"]
         self.stop_words.extend(self.our_stop_words)
         self.stop_words_dict = dict.fromkeys(self.stop_words)
         self.tokens = None
         self.is_num_after_num = False
         self.dict_punctuation = dict.fromkeys(string.punctuation)
         self.entity_dict = {}
-        self.capital_letter_dict = {}
+        # self.capital_letter_dict = {}
 
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                     "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
         self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
-        self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?_([A-Z]*[a-z]*)([\d]*)?")
+        self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?[_-]([A-Z]*[a-z]*)([\d]*)?")
         # self.hashtag_pattern = re.compile("([A-Z]+[a-z]+)""|([a-z]+)*""|^([a-z]+)")
         self.url_puctuation_pattern = re.compile("[:/=?#]")
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
@@ -81,7 +81,6 @@ class Parse:
         # indices_retweet_as_list = self.indices_as_list(retweet_indices)
         # indices_quoted_as_list = self.indices_as_list(quoted_indices)
         # indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
-        # self.tes_func()
 
         raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
         broken_urls = self.parse_url_text(raw_urls)
@@ -90,8 +89,8 @@ class Parse:
         count_num_in_a_row = 0
         entity_counter = 1
         is_date = False
+        max_freq_term = 0
         term_dict = {}
-        # is_hashtag = True
 
         for term in broken_urls:
             if "http" not in term:
@@ -100,11 +99,8 @@ class Parse:
                 else:
                     term_dict[term] += 1
 
-        ######
-        # test_text = "1.6e-06"
-        # test_tokens = word_tokenize(test_text)
-        # self.tokens = test_tokens
-        ######
+                if term_dict[term] > max_freq_term:
+                    max_freq_term = term_dict[term]
 
         for i, token in enumerate(self.tokens):
             if entity_counter > 1:
@@ -190,6 +186,8 @@ class Parse:
                         term_dict[term] = 1
                     else:
                         term_dict[term] += 1
+                    if term_dict[term] > max_freq_term:
+                        max_freq_term = term_dict[term]
         #############################
             else:
                 # if token not in self.dict_punctuation:
@@ -199,6 +197,8 @@ class Parse:
                         term_dict[token] = 1
                     else:
                         term_dict[token] += 1
+                    if term_dict[token] > max_freq_term:
+                        max_freq_term = term_dict[token]
 
         doc_length = len(tokenized_text)  # after text operations.
         # for term in tokenized_text:
@@ -208,7 +208,7 @@ class Parse:
         #         term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
-                            quote_urls, term_dict, doc_length)
+                            quote_urls, term_dict, doc_length, max_freq_term)
 
         # print("full text" + concatenated_text)
         # print("--------------------")
@@ -232,8 +232,6 @@ class Parse:
         """
 
         to_return = []
-        if token_before != "@" and token_before != "#":
-            to_return = [token]
         split_hyphen = token.split("-")
         is_alpha = False
 
@@ -282,9 +280,9 @@ class Parse:
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
         #tokens_with_hashtag.append(token)
-        if "-" not in token:
-            to_see = self.hashtag_pattern.split(token)
-            tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
+        # if "-"  in token:
+        # to_see = self.hashtag_pattern.split(token)
+        tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
 
         return tokens_with_hashtag
 
@@ -309,29 +307,6 @@ class Parse:
                     url.insert(i, address[0])
             to_return.extend(url)
 
-            ####################
-
-            # tokenize_url = Parse.url_puctuation_pattern.split(token)
-            # if ":" in domain:
-            #     split_index = domain.index(":")
-            #     index = tokenize_url.index(domain[:split_index])
-            #     is_colon_in_domain = True
-            # else:
-            #     index = tokenize_url.index(domain)
-            # www_str = ''
-            # if "www." in domain:
-            #     domain = domain[4:]
-            #     www_str = "www"
-            #
-            # tokenize_url.pop(index)
-            # if is_colon_in_domain:
-            #     tokenize_url.pop(index)
-            # tokenize_url.insert(index, www_str)
-            # tokenize_url.insert(index + 1, domain)
-            #
-            # for i in range(len(tokenize_url)):
-            #     if tokenize_url[i] != "":
-            #         to_return.append(tokenize_url[i])
 
         return to_return
 
@@ -369,9 +344,7 @@ class Parse:
         elif "." in str_no_commas:
             amount_of_dots = str_no_commas.count(".")
             if amount_of_dots > 1:
-                # if not str_no_commas.startswith("."):
                     return [str_no_commas]
-                # str_no_commas = str_no_commas[1:]
             as_number = float("{:.3f}".format(float(str_no_commas)))
         else:
             as_number = int(str_no_commas)
@@ -436,26 +409,9 @@ class Parse:
         ret = result.join(numbers_signs_list)
         returnlist = [ret, division_as_is]
 
-        #####
-
-        # if word_after is not None and word_before is not None:
-        #     print("before: " + word_before + number_as_str + word_after + ", after: " + ret)
-        # elif word_after is not None:
-        #     print("before: " + number_as_str + word_after + ", after: " + ret)
-        # elif word_before is not None:
-        #     print("before: " + word_before + number_as_str + ", after: " + ret)
-        # print("---------------------------------")
-        #####
-
         if returnlist[1] != "":
             return returnlist
         return [ret]
-
-    # def parse_entities(self, token_list):
-    #     # doc = nlp(token)
-    #     # entity_list = [i for i in doc.ents]
-    #
-    #     return entity_list
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         """
@@ -469,8 +425,6 @@ class Parse:
         parsed_token_list = set()
         input_list = [url, retweet_url, quote_url, retweet_quoted_urls]
         if url == "{}":
-            # if re.search("(?P<url>https?://[^\s]+)", full_text) is not None:  #: URL
-            #     url_from_text = re.search("(?P<url>https?://[^\s]+)", full_text).group("url")
             url_from_text = self.url_pattern.findall(full_text)
             if len(url_from_text) > 0:
                 parsed_token_list.add(url_from_text[0])
@@ -499,11 +453,6 @@ class Parse:
             indices_as_list[i] = int(indices_as_list[i])
 
         return indices_as_list
-
-    # def add_to_tokens(self, text):
-    #     if text != "":
-    #         tokenized_quoted_text = self.parse_sentence(text)
-    #         self.tokens = self.tokens + tokenized_quoted_text
 
     def concatenate_tweets(self, tweet, retweet_text, retweet_quoted_text, quoted_text):
         """
