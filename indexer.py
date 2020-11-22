@@ -5,6 +5,7 @@ import _pickle as pickle
 import bisect
 from collections import OrderedDict
 
+
 class Indexer:
     pickle_counter = 1
 
@@ -21,9 +22,14 @@ class Indexer:
         :param document: a document need to be indexed.
         :return: -
         """
+        term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
+        term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
+        term_merge = self.merge(term1,term2)
 
         document_dictionary = document.term_doc_dictionary
         # Go over each term in the doc
+
+         
         for term in document_dictionary.keys():
             try:
                 # Update inverted index and posting
@@ -87,4 +93,19 @@ class Indexer:
                     self.inverted_idx[key.lower()] += count_docs
                     self.postingDict[key.lower()].extend(posting_file)
 
+    def merge(self, left, right):
+        """Merge sort merging function."""
 
+        left_index, right_index = 0, 0
+        result = []
+        while left_index < len(left) and right_index < len(right):
+            if left[left_index][0] < right[right_index][0]:
+                result.append(left[left_index])
+                left_index += 1
+            else:
+                result.append(right[right_index])
+                right_index += 1
+
+        result += left[left_index:]
+        result += right[right_index:]
+        return result
