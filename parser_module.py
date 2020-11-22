@@ -70,7 +70,7 @@ class Parse:
         retweet_quoted_indices = doc_as_list[13]
 
         concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        tokenized_text = self.parse_sentence("#BreakingNews")
+        tokenized_text = self.parse_sentence(full_text)
         #tokenized_text = self.parse_sentence(concatenated_text)
 
 
@@ -91,7 +91,7 @@ class Parse:
         entity_counter = 1
         is_date = False
         term_dict = {}
-        is_hashteg = True
+        # is_hashtag = True
 
         for term in broken_urls:
             if "http" not in term:
@@ -101,9 +101,9 @@ class Parse:
                     term_dict[term] += 1
 
         ######
-        test_text = "1.6e-06"
-        test_tokens = word_tokenize(test_text)
-        self.tokens = test_tokens
+        # test_text = "1.6e-06"
+        # test_tokens = word_tokenize(test_text)
+        # self.tokens = test_tokens
         ######
 
         for i, token in enumerate(self.tokens):
@@ -125,7 +125,7 @@ class Parse:
                 parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
-            elif token.isalpha() :  #: capital letters and entities
+            elif token.isalpha():  #: capital letters and entities
 
                 entity_str = ""
                 if entity_counter == 1:
@@ -210,11 +210,11 @@ class Parse:
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length)
 
-        print("full text" + concatenated_text)
-        print("--------------------")
-        print("urls" + str(broken_urls))
-        print("term_dict: " + str(term_dict))
-        print("--------------------")
+        # print("full text" + concatenated_text)
+        # print("--------------------")
+        # print("urls" + str(broken_urls))
+        # print("term_dict: " + str(term_dict))
+        # print("--------------------")
         return document
 
     def parse_date(self, token):

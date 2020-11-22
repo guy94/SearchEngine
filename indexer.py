@@ -1,12 +1,14 @@
 from parser_module import Parse
-
+import _pickle as pickle
 
 class Indexer:
+    pickle_counter = 1
 
     def __init__(self, config):
         self.inverted_idx = {}
         self.postingDict = {}
         self.config = config
+        self.num_of_docs = 0
 
     def add_new_doc(self, document):
         """
@@ -28,6 +30,20 @@ class Indexer:
                     self.inverted_idx[term] += 1
 
                 self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
+                self.num_of_docs += 1
+
+                if self.num_of_docs == 10000:
+                    pickle_out = open("postings\\posting_{}".format(Indexer.pickle_counter), "wb")
+                    pickle.dump(self.postingDict, pickle_out)
+                    pickle_out.close()
+
+                    self.num_of_docs = 0
+                    Indexer.pickle_counter += 1
+                    self.postingDict = {}
+
+                    # pickle_in = open("postings\\posting_1", "rb")
+                    # example = pckl.load(pickle_in)
+                    # print(example)
 
             except:
                 print('problem with the following key {}'.format(term[0]))

@@ -28,12 +28,13 @@ def run_engine():
     documents_list = r.read_file(file_name=corpus_list[0])
     # parsed_document = p.parse_doc(documents_list[249863])
     # parsed_document = p.parse_doc(documents_list[2792])
-    parsed_document = p.parse_doc(documents_list[4])
+    # parsed_document = p.parse_doc(documents_list[15000])
 
-    for i in range(20000):
+    for i in range(len(documents_list)):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         number_of_documents += 1
+        indexer.add_new_doc(parsed_document)
 
     # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################
@@ -62,7 +63,7 @@ def run_engine():
     print(number_of_documents)
 
     utils.save_obj(indexer.inverted_idx, "inverted_idx")
-    utils.save_obj(indexer.postingDict, "posting")
+    # utils.save_obj(indexer.postingDict, "posting")
 
 
 def load_index():
