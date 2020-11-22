@@ -1,5 +1,6 @@
 from parser_module import Parse
 import _pickle as pickle
+from collections import OrderedDict
 
 class Indexer:
     pickle_counter = 1
@@ -25,14 +26,18 @@ class Indexer:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
                     self.inverted_idx[term] = 1
-                    self.postingDict[term] = []
                 else:
                     self.inverted_idx[term] += 1
 
-                self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
+                if term not in self.postingDict:
+                    self.postingDict[term] = [(document.tweet_id, document_dictionary[term])]
+                else:
+                    self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
+
                 self.num_of_docs += 1
 
-                if self.num_of_docs == 10000:
+                if self.num_of_docs == 500:
+                    # od = OrderedDict(sorted(self.postingDict.items(), reverse=True))
                     pickle_out = open("postings\\posting_{}".format(Indexer.pickle_counter), "wb")
                     pickle.dump(self.postingDict, pickle_out)
                     pickle_out.close()
