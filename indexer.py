@@ -1,5 +1,8 @@
+import time
+
 from parser_module import Parse
 import _pickle as pickle
+import bisect
 from collections import OrderedDict
 
 class Indexer:
@@ -32,14 +35,26 @@ class Indexer:
                 if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term])]
                 else:
-                    self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
+                    bisect.insort(self.postingDict[term], (document.tweet_id, document_dictionary[term]))
+                    # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
                 self.num_of_docs += 1
 
                 if self.num_of_docs == 500:
-                    # od = OrderedDict(sorted(self.postingDict.items(), reverse=True))
+                    sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
+
+                    # keys = list(sorted_keys_dict.keys())
+                    # for key in keys:
+                    #     lst = self.postingDict[key]
+                    #     for i in range(len(lst) - 1):
+                    #         if lst[i] > lst[i + 1]:
+                    #             print(False)
+                    # for i in range(len(keys) - 1):
+                    #     if keys[i] > keys[i + 1]:
+                    #         print(False)
+
                     pickle_out = open("postings\\posting_{}".format(Indexer.pickle_counter), "wb")
-                    pickle.dump(self.postingDict, pickle_out)
+                    pickle.dump(sorted_keys_dict, pickle_out)
                     pickle_out.close()
 
                     self.num_of_docs = 0
@@ -51,7 +66,7 @@ class Indexer:
                     # print(example)
 
             except:
-                print('problem with the following key {}'.format(term[0]))
+                print('problem with the following key {}'.format(term))
 
     def remove_capital_entity(self):
 
