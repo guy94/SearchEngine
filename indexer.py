@@ -45,25 +45,25 @@ class Indexer:
                     bisect.insort(self.postingDict[term], (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
-                self.num_of_docs += 1
-
-                if self.num_of_docs == Indexer.NUM_OF_DOCS_IN_POSTINGS:
-                    sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
-
-                    pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "wb")
-                    pickle.dump(sorted_keys_dict, pickle_out)
-                    pickle_out.close()
-
-                    self.num_of_docs = 0
-                    Indexer.PICKLE_COUNTER += 1
-                    self.postingDict = {}
-
-                    # pickle_in = open("postings\\posting_1", "rb")
-                    # example = pckl.load(pickle_in)
-                    # print(example)
-
             except:
                 print('problem with the following key {}'.format(term))
+
+        self.num_of_docs += 1
+
+        if self.num_of_docs == Indexer.NUM_OF_DOCS_IN_POSTINGS:
+            sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
+
+            pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "wb")
+            pickle.dump(sorted_keys_dict, pickle_out)
+            pickle_out.close()
+
+            self.num_of_docs = 0
+            Indexer.PICKLE_COUNTER += 1
+            self.postingDict = {}
+
+            # pickle_in = open("postings\\posting_1", "rb")
+            # example = pckl.load(pickle_in)
+            # print(example)
 
     def remove_capital_entity(self):
 
