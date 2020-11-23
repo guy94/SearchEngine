@@ -30,11 +30,13 @@ def run_engine():
     # parsed_document = p.parse_doc(documents_list[2792])
     # parsed_document = p.parse_doc(documents_list[15000])
 
-    for i in range(20000):
+    for i in range(10):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         number_of_documents += 1
         indexer.add_new_doc(parsed_document)
+
+    indexer.merge_files()
 
     # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################

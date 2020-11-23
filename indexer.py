@@ -1,13 +1,17 @@
+import os
 import time
 
 from parser_module import Parse
 import _pickle as pickle
 import bisect
+from threading import Thread
+from multiprocessing.dummy import Pool as ThreadPool
 
 
 class Indexer:
     PICKLE_COUNTER = 1
     NUM_OF_DOCS_IN_POSTINGS = 500
+    # POOL = ThreadPool(4)
 
     def __init__(self, config):
         self.inverted_idx = {}
@@ -42,7 +46,8 @@ class Indexer:
                 if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term)]
                 else:
-                    bisect.insort(self.postingDict[term], (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
+                    bisect.insort(self.postingDict[term],
+                                  (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
             except:
@@ -57,13 +62,10 @@ class Indexer:
             pickle.dump(sorted_keys_dict, pickle_out)
             pickle_out.close()
 
+            print(self.num_of_docs)
             self.num_of_docs = 0
             Indexer.PICKLE_COUNTER += 1
             self.postingDict = {}
-
-            # pickle_in = open("postings\\posting_1", "rb")
-            # example = pckl.load(pickle_in)
-            # print(example)
 
     def remove_capital_entity(self):
 
@@ -83,6 +85,32 @@ class Indexer:
                     del self.postingDict[key]
                     self.inverted_idx[key.lower()] += count_docs
                     self.postingDict[key.lower()].extend(posting_file)
+
+    def merge_files(self):
+        postings = [os.path.join(d, x)
+                       for d, dirs, files in os.walk("postings")
+                       for x in files]
+
+        while len(postings) != len(self.inverted_idx):
+            for i in range(len(postings) - 1):
+                try:
+                    pickle_in = open("{}".format(postings[i]), "rb")
+                    dict1 = pickle.load(pickle_in)
+                    pickle_in.close()
+
+                    pickle_in = open("{}".format(postings[i+1]), "rb")
+                    dict2 = pickle.load(pickle_in)
+                    pickle_in.close()
+
+                    intersection_of_dicts_keys = dict1.keys() & (dict2.keys())
+
+                    for key in intersection_of_dicts_keys:
+                        thread1 = Thread(target=self.merge, args=(dict1[key], dict2[key]))
+
+                except:
+                    print('problem with the following arg {}'.format(pickle_in))
+
+
 
     def merge(self, left, right):
         """Merge sort merging function."""
