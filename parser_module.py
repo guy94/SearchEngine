@@ -182,6 +182,16 @@ class Parse:
                     parsed_token_list = number_as_list
 
             if len(parsed_token_list) > 0:
+
+                if self.stemmer:
+                    parsed_token_list_stemmer = []
+                    for word in parsed_token_list:
+                        if word.isalpha():
+                            parsed_token_list_stemmer.append(self.porter_stemmer.stem(word))
+                        else:
+                            parsed_token_list_stemmer.append(word)
+                    parsed_token_list = parsed_token_list_stemmer
+
                 for term in parsed_token_list:
                     if term not in term_dict:
                         term_dict[term] = 1
@@ -194,6 +204,8 @@ class Parse:
                 # if token not in self.dict_punctuation:
                 if "//t" not in token and token not in self.dict_punctuation:
                     token = token.lower()
+                    if self.stemmer:
+                        token = self.porter_stemmer.stem(token)
                     if token not in term_dict:
                         term_dict[token] = 1
                     else:

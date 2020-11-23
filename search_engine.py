@@ -29,12 +29,27 @@ def run_engine():
     # parsed_document = p.parse_doc(documents_list[249863])
     # parsed_document = p.parse_doc(documents_list[2792])
     # parsed_document = p.parse_doc(documents_list[15000])
+    Parse.stemmer = True
+    amount_with_stemmer = 0
+    amount_with_out_stemmer = 0
 
     for i in range(20000):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
+        amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
-        indexer.add_new_doc(parsed_document)
+        # indexer.add_new_doc(parsed_document)
+    Parse.stemmer = False
+
+    for i in range(20000):
+        # print(str(number_of_documents))
+        parsed_document = p.parse_doc(documents_list[i])
+        amount_with_out_stemmer += len(parsed_document.term_doc_dictionary)
+        number_of_documents += 1
+        # indexer.add_new_doc(parsed_document)
+
+    print(amount_with_stemmer)
+    print(amount_with_out_stemmer)
 
     # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################
