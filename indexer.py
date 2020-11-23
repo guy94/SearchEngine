@@ -11,14 +11,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Indexer:
     PICKLE_COUNTER = 1
-    NUM_OF_DOCS_IN_POSTINGS = 500
+    NUM_OF_TERMS_IN_POSTINGS = 30000
 
     def __init__(self, config):
         self.inverted_idx = {}
         self.postingDict = {}
         self.config = config
-        self.num_of_docs = 0
-        self.executor = ThreadPoolExecutor(4)
+        self.num_of_terms = 0
+        self.executor = ThreadPoolExecutor(8)
 
     def add_new_doc(self, document):
         """
@@ -27,8 +27,8 @@ class Indexer:
         :param document: a document need to be indexed.
         :return: -
         """
-        term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
-        term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
+        # term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
+        # term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
         # term_merge = self.merge(term1, term2)
 
         document_dictionary = document.term_doc_dictionary
@@ -51,22 +51,21 @@ class Indexer:
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
+                self.num_of_terms += 1
+
+                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS:
+                    sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
+
+                    pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "wb")
+                    pickle.dump(sorted_keys_dict, pickle_out)
+                    pickle_out.close()
+
+                    self.num_of_terms = 0
+                    Indexer.PICKLE_COUNTER += 1
+                    self.postingDict = {}
+
             except:
                 print('problem with the following key {}'.format(term))
-
-        self.num_of_docs += 1
-
-        if self.num_of_docs == Indexer.NUM_OF_DOCS_IN_POSTINGS:
-            sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
-
-            pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "wb")
-            pickle.dump(sorted_keys_dict, pickle_out)
-            pickle_out.close()
-
-            print(self.num_of_docs)
-            self.num_of_docs = 0
-            Indexer.PICKLE_COUNTER += 1
-            self.postingDict = {}
 
     def remove_capital_entity(self):
 
@@ -104,23 +103,25 @@ class Indexer:
 
                 intersection_of_dicts_keys = dict1.keys() & (dict2.keys())
 
-                start = time.time()
-                print("started merging")
-                print("i: {}".format(i))
+                merged_dict1 = {}
+                merged_dict2 = {}
                 for key in intersection_of_dicts_keys:
                     left = dict1[key]
                     right = dict2[key]
-                    # future = self.executor.submit(self.merge, left, right)
-                    # united_posting = future.result()
-                    self.merge(left, right)
-                    # print("key: {}".format(key))
-                    # print(united_posting)
-                    # print("------------------")
-            print(time.time() - start)
+                    future = self.executor.submit(self.merge, left, right)
+                    united_posting = future.result()
+
+                    if(len(merged_dict1) <= Indexer.NUM_OF_TERMS_IN_POSTINGS):
+                        merged_dict1[key] = united_posting
+                    else:
+                        merged_dict2[key] = united_posting
+
+
+
+
 
     def merge(self, left, right):
         """Merge sort merging function."""
-
         left_index, right_index = 0, 0
         result = []
         while left_index < len(left) and right_index < len(right):

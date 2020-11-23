@@ -33,16 +33,14 @@ def run_engine():
     amount_with_stemmer = 0
     amount_with_out_stemmer = 0
 
-    for i in range(1000):
+    for i in range(50000):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
         indexer.add_new_doc(parsed_document)
-    Parse.stemmer = False
 
-
-    indexer.merge_files()
+    # indexer.merge_files()
 
     # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################
