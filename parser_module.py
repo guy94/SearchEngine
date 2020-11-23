@@ -7,10 +7,12 @@ from nltk.tokenize import word_tokenize
 from document import Document
 import json
 import json
+from nltk.stem import PorterStemmer
 nlp = spacy.load("en_core_web_sm")
 
 
 class Parse:
+    stemmer = False
     capital_letter_dict_global = {}
     idx = 0
     entity_dict_global = {}
@@ -24,13 +26,12 @@ class Parse:
         self.is_num_after_num = False
         self.dict_punctuation = dict.fromkeys(string.punctuation)
         self.entity_dict = {}
-        # self.capital_letter_dict = {}
+        self.porter_stemmer = PorterStemmer()
 
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                     "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
         self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
         self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?[_-]([A-Z]*[a-z]*)([\d]*)?")
-        # self.hashtag_pattern = re.compile("([A-Z]+[a-z]+)""|([a-z]+)*""|^([a-z]+)")
         self.url_puctuation_pattern = re.compile("[:/=?#]")
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
         self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
@@ -136,9 +137,9 @@ class Parse:
                     parsed_token_list.append(token)
 
                     if token not in Parse.capital_letter_dict_global.keys():
-                        Parse.capital_letter_dict_global[token] = 1
+                        Parse.entity_dict_global[token] = 1
                     else:
-                        Parse.capital_letter_dict_global[token] += 1
+                        Parse.entity_dict_global[token] += 1
 
                 count_num_in_a_row = 0
 
