@@ -1,3 +1,4 @@
+import concurrent
 import os
 import time
 
@@ -5,19 +6,19 @@ from parser_module import Parse
 import _pickle as pickle
 import bisect
 from threading import Thread
-from multiprocessing.dummy import Pool as ThreadPool
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Indexer:
     PICKLE_COUNTER = 1
     NUM_OF_DOCS_IN_POSTINGS = 500
-    # POOL = ThreadPool(4)
 
     def __init__(self, config):
         self.inverted_idx = {}
         self.postingDict = {}
         self.config = config
         self.num_of_docs = 0
+        self.executor = ThreadPoolExecutor(4)
 
     def add_new_doc(self, document):
         """
@@ -26,8 +27,8 @@ class Indexer:
         :param document: a document need to be indexed.
         :return: -
         """
-        # term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
-        # term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
+        term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
+        term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
         # term_merge = self.merge(term1, term2)
 
         document_dictionary = document.term_doc_dictionary
@@ -93,24 +94,29 @@ class Indexer:
 
         while len(postings) != len(self.inverted_idx):
             for i in range(len(postings) - 1):
-                try:
-                    pickle_in = open("{}".format(postings[i]), "rb")
-                    dict1 = pickle.load(pickle_in)
-                    pickle_in.close()
+                pickle_in = open("{}".format(postings[i]), "rb")
+                dict1 = pickle.load(pickle_in)
+                pickle_in.close()
 
-                    pickle_in = open("{}".format(postings[i+1]), "rb")
-                    dict2 = pickle.load(pickle_in)
-                    pickle_in.close()
+                pickle_in = open("{}".format(postings[i+1]), "rb")
+                dict2 = pickle.load(pickle_in)
+                pickle_in.close()
 
-                    intersection_of_dicts_keys = dict1.keys() & (dict2.keys())
+                intersection_of_dicts_keys = dict1.keys() & (dict2.keys())
 
-                    for key in intersection_of_dicts_keys:
-                        thread1 = Thread(target=self.merge, args=(dict1[key], dict2[key]))
-
-                except:
-                    print('problem with the following arg {}'.format(pickle_in))
-
-
+                start = time.time()
+                print("started merging")
+                print("i: {}".format(i))
+                for key in intersection_of_dicts_keys:
+                    left = dict1[key]
+                    right = dict2[key]
+                    # future = self.executor.submit(self.merge, left, right)
+                    # united_posting = future.result()
+                    self.merge(left, right)
+                    # print("key: {}".format(key))
+                    # print(united_posting)
+                    # print("------------------")
+            print(time.time() - start)
 
     def merge(self, left, right):
         """Merge sort merging function."""
