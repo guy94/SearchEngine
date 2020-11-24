@@ -9,7 +9,6 @@ import time
 
 def run_engine():
     """
-
     :return:
     """
     number_of_documents = 0
@@ -25,7 +24,7 @@ def run_engine():
     # documents_list = r.read_file(file_name='sample3.parquet')
 
     start = time.time()
-    documents_list = r.read_file(file_name=corpus_list[0])
+    # documents_list = r.read_file(file_name=corpus_list[0])
     # parsed_document = p.parse_doc(documents_list[249863])
     # parsed_document = p.parse_doc(documents_list[2792])
     # parsed_document = p.parse_doc(documents_list[15000])
@@ -33,12 +32,16 @@ def run_engine():
     amount_with_stemmer = 0
     amount_with_out_stemmer = 0
 
-    for i in range(50000):
-        # print(str(number_of_documents))
+    # for i in range(10):
+    documents_list = r.read_file(file_name=corpus_list[2])
+    parsed_document = p.parse_doc(documents_list[163322])
+    for i in range(len(documents_list)):
+        print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
         indexer.add_new_doc(parsed_document)
+    print("dict len: {}".format(len(indexer.inverted_idx)))
 
     # indexer.merge_files()
 
@@ -66,7 +69,7 @@ def run_engine():
     end = time.time()
     print(end - start)
     print('Finished parsing and indexing. Starting to export files')
-    print(number_of_documents)
+    print("number of docs: {}".format(number_of_documents))
 
     utils.save_obj(indexer.inverted_idx, "inverted_idx")
     # utils.save_obj(indexer.postingDict, "posting")

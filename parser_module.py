@@ -314,7 +314,7 @@ class Parse:
             url = self.split_url_pattern.findall(token)
 
             for i, elem in enumerate(url):
-                if 'www' in elem:
+                if 'www.' in elem:
                     address = url[i].split('.', 1)
                     url[i] = address[1]
                     url.insert(i, address[0])
@@ -350,7 +350,10 @@ class Parse:
             word_after = word_after.lower()
 
         if "/" in str_no_commas:
+            amount_of_sleshes = str_no_commas.count("/")
             division_as_is = str_no_commas
+            if amount_of_sleshes > 1:
+                    return [str_no_commas]
             is_division = True
             num, denum = str_no_commas.split('/')
             as_number = float(num) / float(denum)

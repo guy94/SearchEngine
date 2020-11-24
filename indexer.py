@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Indexer:
     PICKLE_COUNTER = 1
-    NUM_OF_TERMS_IN_POSTINGS = 30000
+    NUM_OF_TERMS_IN_POSTINGS = 150000
 
     def __init__(self, config):
         self.inverted_idx = {}
@@ -91,7 +91,10 @@ class Indexer:
                        for d, dirs, files in os.walk("postings")
                        for x in files]
 
-        while len(postings) != len(self.inverted_idx):
+        has_intersection = True
+        while has_intersection:
+            has_intersection = False
+
             for i in range(len(postings) - 1):
                 pickle_in = open("{}".format(postings[i]), "rb")
                 dict1 = pickle.load(pickle_in)
@@ -102,6 +105,8 @@ class Indexer:
                 pickle_in.close()
 
                 intersection_of_dicts_keys = dict1.keys() & (dict2.keys())
+                if len(intersection_of_dicts_keys) > 0:
+                    has_intersection = True
 
                 merged_dict1 = {}
                 merged_dict2 = {}
