@@ -33,17 +33,17 @@ def run_engine():
     amount_with_out_stemmer = 0
 
     # for i in range(10):
-    documents_list = r.read_file(file_name=corpus_list[2])
-    parsed_document = p.parse_doc(documents_list[163322])
-    for i in range(len(documents_list)):
-        print(str(number_of_documents))
+    documents_list = r.read_file(file_name=corpus_list[0])
+    # parsed_document = p.parse_doc(documents_list[163322])
+    for i in range(20):
+        # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
         amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
         indexer.add_new_doc(parsed_document)
     print("dict len: {}".format(len(indexer.inverted_idx)))
 
-    # indexer.merge_files()
+    indexer.merge_files()
 
     # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################

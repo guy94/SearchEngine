@@ -43,7 +43,7 @@ class Parse:
         :param text:
         :return:
         """
-        extra_puncts = [r"", r"'", r"''", r'"', '``', '’']
+        extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
         self.tokens = text_tokens_without_stopwords
