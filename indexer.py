@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 class Indexer:
     PICKLE_COUNTER = 0
     NUM_OF_TERMS_IN_POSTINGS = 100
+    FINAL_POSTINGS_COUNTER = 0
 
     def __init__(self, config):
         self.inverted_idx = {}
@@ -138,24 +139,19 @@ class Indexer:
         """gets a posting NAME and it's index!! and reads it's content from the disk
            store the file descriptor fo current posting file"""
         pickle_in = open("{}".format(posting), "rb")
-        if posting in self.file_descriptor_dict:
-            pickle_in.seek(self.file_descriptor_dict[posting])
+        if num_of_file in self.file_descriptor_dict:
+            pickle_in.seek(self.file_descriptor_dict[num_of_file])
         part_of_posting = []
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-
-        # for i in range(amount_to_read):
-        #     if part_of_posting == "":
-        #         part_of_posting = pickle.load(pickle_in)
-        #     else:
-        #         part_of_posting += ", " + (pickle.load(pickle_in))
-        # part_of_posting = "{" + part_of_posting + "}"
-        # part_of_posting = json.loads(part_of_posting)
 
         for i in range(amount_to_read):
             key_value = pickle.load(pickle_in)
             part_of_posting.append(key_value)
 
-        self.file_descriptor_dict[num_of_file] = pickle_in.tell()
+        if num_of_file == 2:
+            print()
+
+        self.file_descriptor_dict[num_of_file] = pickle_in.seek(pickle_in.tell())
         pickle_in.close()
 
         return part_of_posting
@@ -163,18 +159,22 @@ class Indexer:
     def k_elements_sort(self):
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
         index_list = [0] * Indexer.PICKLE_COUNTER
-        Indexer.PICKLE_COUNTER = 0
         merged_dict = {}
         posting_with_min_key = 0  #:the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  #:the index in which the smallest key is
-        is_start = True
-        temp = []
+        pivot = []
 
         while (True):  #TODO: convert to NOT_FINISHED, we need to realize what is the break condition (entire corpus done)
-            if is_start:
-                temp = self.files_to_merge[0][index_list[0]]
+            print(self.files_to_merge[0])
             for i in range(amount_to_read):  #: iterate all the loop!!!
+                pivot = self.files_to_merge[0][index_list[0]]
+                is_pivot = True
+                is_pivot_the_smallest = True
+                print(pivot)
+
                 for j, idx in enumerate(index_list):
+                    if idx == 32:
+                        print()
                     if idx == amount_to_read:
                         #new read pickle!!
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[j], j)
@@ -182,37 +182,44 @@ class Indexer:
                         index_list[j] = 0
 
                     current_key = self.files_to_merge[j][idx]
-                    if not is_start and current_key[0] == temp[0]:
-                        index_list[j] += 1  #: progress to next index in the current posting file
-                        left = self.files_to_merge[j][idx]
-                        right = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting]
+                    if current_key[0] == pivot[0] and not is_pivot:
+                        left = self.files_to_merge[j][idx][1]
+                        right = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
 
                         merge_func_result = self.merge(left, right)
                         self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1] = merge_func_result
+                        index_list[j] += 1  #: progress to next index in the current posting file
 
-                    elif current_key[0] < temp[0]:
-                        temp = current_key
+                    elif current_key[0] < pivot[0]:
+                        is_pivot_the_smallest = False
+                        pivot = current_key
                         posting_with_min_key = j
                         idx_in_min_key_posting = idx
-
                         index_list[j] += 1  #: progress to next index in the current posting file
-                    # else:
-                    #     index_list[j] += 1
-                    is_start = False
 
-                merged_dict[temp] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
+                    is_pivot = False
+
+                if is_pivot_the_smallest:
+                    posting_with_min_key = 0
+                    idx_in_min_key_posting = index_list[0]
+                    index_list[0] += 1
+
+                # print(index_list)
+                merged_dict[pivot[0]] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
+
                 #TODO:: need to count len of merged_dict. when hits Indexer.NUM_OF_TERMS_IN_POSTINGS -->>
                 #TODO:: write dict to a NEW!! posting file' with a unique name
 
                 if len(merged_dict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
-                    file_name = "postings\\final_posting_{}".format(Indexer.PICKLE_COUNTER)
+                    Indexer.FINAL_POSTINGS_COUNTER += 1
+                    file_name = "postings\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
                     pickle_out = open(file_name, "wb")
                     for key, value in merged_dict.items():
                         pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
                         self.inverted_idx[key][1] = file_name
                     pickle_out.close()
 
-                    print("dumped {}".format(Indexer.PICKLE_COUNTER))
+                    print("dumped {}".format(Indexer.FINAL_POSTINGS_COUNTER))
 
 
     def merge(self, left, right):
