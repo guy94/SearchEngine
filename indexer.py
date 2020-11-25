@@ -49,6 +49,7 @@ class Indexer:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
                     self.inverted_idx[term] = [1, ""]
+                    self.num_of_terms += 1
                 else:
                     self.inverted_idx[term][0] += 1
 
@@ -59,8 +60,6 @@ class Indexer:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
-
-                self.num_of_terms += 1
 
                 if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS or self.is_last_doc:
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
