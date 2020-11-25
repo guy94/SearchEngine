@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class Indexer:
-    PICKLE_COUNTER = 1
+    PICKLE_COUNTER = 0
     NUM_OF_TERMS_IN_POSTINGS = 100
 
     def __init__(self, config):
@@ -44,9 +44,9 @@ class Indexer:
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
-                    self.inverted_idx[term] = 1
+                    self.inverted_idx[term] = [1, ""]
                 else:
-                    self.inverted_idx[term] += 1
+                    self.inverted_idx[term][0] += 1
 
                 term_freq = document_dictionary[term]
                 if term not in self.postingDict:
@@ -60,15 +60,15 @@ class Indexer:
 
                 if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
+                    Indexer.PICKLE_COUNTER += 1
 
                     pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "ab")
                     for key, value in sorted_keys_dict.items():
-                        pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+                        # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+                        pickle.dump([key, value], pickle_out)
                     pickle_out.close()
-                    print("dumped {}".format(Indexer.PICKLE_COUNTER))
 
                     self.num_of_terms = 0
-                    Indexer.PICKLE_COUNTER += 1
                     self.postingDict = {}
 
             except:
@@ -140,17 +140,21 @@ class Indexer:
         pickle_in = open("{}".format(posting), "rb")
         if posting in self.file_descriptor_dict:
             pickle_in.seek(self.file_descriptor_dict[posting])
-        part_of_posting = ""
+        part_of_posting = []
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
 
-        for i in range(amount_to_read):
-            if part_of_posting == "":
-                part_of_posting = pickle.load(pickle_in)
-            else:
-                part_of_posting += ", " + (pickle.load(pickle_in))
+        # for i in range(amount_to_read):
+        #     if part_of_posting == "":
+        #         part_of_posting = pickle.load(pickle_in)
+        #     else:
+        #         part_of_posting += ", " + (pickle.load(pickle_in))
+        # part_of_posting = "{" + part_of_posting + "}"
+        # part_of_posting = json.loads(part_of_posting)
 
-        part_of_posting = "{" + part_of_posting + "}"
-        part_of_posting = json.loads(part_of_posting)
+        for i in range(amount_to_read):
+            key_value = pickle.load(pickle_in)
+            part_of_posting.append(key_value)
+
         self.file_descriptor_dict[num_of_file] = pickle_in.tell()
         pickle_in.close()
 
@@ -158,50 +162,58 @@ class Indexer:
 
     def k_elements_sort(self):
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        index_list = [0] * amount_to_read
+        index_list = [0] * Indexer.PICKLE_COUNTER
+        Indexer.PICKLE_COUNTER = 0
         merged_dict = {}
         posting_with_min_key = 0  #:the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  #:the index in which the smallest key is
         is_start = True
-        temp = ""
+        temp = []
 
         while (True):  #TODO: convert to NOT_FINISHED, we need to realize what is the break condition (entire corpus done)
             if is_start:
                 temp = self.files_to_merge[0][index_list[0]]
             for i in range(amount_to_read):  #: iterate all the loop!!!
-                #: dont forget to check out of range in each posting, and load another posting
-
-                for j, idx in range(len(index_list)):
+                for j, idx in enumerate(index_list):
                     if idx == amount_to_read:
                         #new read pickle!!
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[j], j)
-                        self.files_to_merge.pop(j)
-                        self.files_to_merge.insert(j, posting_to_insert)
+                        self.files_to_merge[j] = posting_to_insert
                         index_list[j] = 0
 
                     current_key = self.files_to_merge[j][idx]
-                    if not is_start and current_key == temp:
+                    if not is_start and current_key[0] == temp[0]:
                         index_list[j] += 1  #: progress to next index in the current posting file
                         left = self.files_to_merge[j][idx]
                         right = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting]
 
                         merge_func_result = self.merge(left, right)
-                        self.files_to_merge[posting_with_min_key][idx_in_min_key_posting] = merge_func_result
-                        del self.files_to_merge[j][idx]
+                        self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1] = merge_func_result
 
-                    elif current_key < temp:
+                    elif current_key[0] < temp[0]:
                         temp = current_key
                         posting_with_min_key = j
                         idx_in_min_key_posting = idx
 
                         index_list[j] += 1  #: progress to next index in the current posting file
-                    else:
-                        index_list[j] += 1
+                    # else:
+                    #     index_list[j] += 1
                     is_start = False
 
-                merged_dict[temp] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting]
+                merged_dict[temp] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
                 #TODO:: need to count len of merged_dict. when hits Indexer.NUM_OF_TERMS_IN_POSTINGS -->>
                 #TODO:: write dict to a NEW!! posting file' with a unique name
+
+                if len(merged_dict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
+                    file_name = "postings\\final_posting_{}".format(Indexer.PICKLE_COUNTER)
+                    pickle_out = open(file_name, "wb")
+                    for key, value in merged_dict.items():
+                        pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+                        self.inverted_idx[key][1] = file_name
+                    pickle_out.close()
+
+                    print("dumped {}".format(Indexer.PICKLE_COUNTER))
+
 
     def merge(self, left, right):
         """Merge sort merging function."""
