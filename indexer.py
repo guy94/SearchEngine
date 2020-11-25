@@ -159,8 +159,11 @@ class Indexer:
                 self.size_of_last_posting -= amount_to_read
 
         for i in range(amount_to_read):
-            key_value = pickle.load(pickle_in)
-            part_of_posting.append(key_value)
+            try:
+                key_value = pickle.load(pickle_in)
+                part_of_posting.append(key_value)
+            except:
+                continue
 
         Indexer.GLOBAL_TERM_COUNTER -= len(part_of_posting)
 
@@ -175,6 +178,10 @@ class Indexer:
         merged_dict = {}
         posting_with_min_key = 0  #:the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  #:the index in which the smallest key is
+
+        #TODO:: make a list of all file numbers' tat maps a list to file number. in this way there
+        # is no problem to pop empty lists from files_to_merge.
+        # add a condition of half lists etc.
 
         while Indexer.GLOBAL_TERM_COUNTER > 0:
             for i in range(amount_to_read):  #: iterate all the loop!!!
