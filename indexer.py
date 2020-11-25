@@ -100,7 +100,7 @@ class Indexer:
                                      for x in files]
 
         for i, posting in enumerate(self.postings_files_names):
-            part_of_posting = self.read_part_of_posting(posting, i + 1)
+            part_of_posting = self.read_part_of_posting(posting, i)
             self.files_to_merge.append(part_of_posting)
 
         all_files_merged = self.k_elements_sort()
@@ -138,9 +138,11 @@ class Indexer:
     def read_part_of_posting(self, posting, num_of_file):
         """gets a posting NAME and it's index!! and reads it's content from the disk
            store the file descriptor fo current posting file"""
+        num_of_file += 1
         pickle_in = open("{}".format(posting), "rb")
         if num_of_file in self.file_descriptor_dict:
-            pickle_in.seek(self.file_descriptor_dict[num_of_file])
+            fdr = self.file_descriptor_dict[num_of_file]
+            pickle_in.seek(fdr)
         part_of_posting = []
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
 
@@ -148,7 +150,7 @@ class Indexer:
             key_value = pickle.load(pickle_in)
             part_of_posting.append(key_value)
 
-        if num_of_file == 2:
+        if num_of_file == 3:
             print()
 
         self.file_descriptor_dict[num_of_file] = pickle_in.seek(pickle_in.tell())
@@ -165,12 +167,10 @@ class Indexer:
         pivot = []
 
         while (True):  #TODO: convert to NOT_FINISHED, we need to realize what is the break condition (entire corpus done)
-            print(self.files_to_merge[0])
             for i in range(amount_to_read):  #: iterate all the loop!!!
                 pivot = self.files_to_merge[0][index_list[0]]
                 is_pivot = True
                 is_pivot_the_smallest = True
-                print(pivot)
 
                 for j, idx in enumerate(index_list):
                     if idx == 32:
@@ -178,8 +178,10 @@ class Indexer:
                     if idx == amount_to_read:
                         #new read pickle!!
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[j], j)
+                        #TODO: idx is not updated
                         self.files_to_merge[j] = posting_to_insert
                         index_list[j] = 0
+                        continue
 
                     current_key = self.files_to_merge[j][idx]
                     if current_key[0] == pivot[0] and not is_pivot:
