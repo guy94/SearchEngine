@@ -14,6 +14,7 @@ class Indexer:
     PICKLE_COUNTER = 0
     NUM_OF_TERMS_IN_POSTINGS = 100
     FINAL_POSTINGS_COUNTER = 0
+    GLOBAL_TERM_COUNTER = 0
 
     def __init__(self, config):
         self.inverted_idx = {}
@@ -25,6 +26,8 @@ class Indexer:
         self.file_descriptor_dict = {}
         self.first_read = True
         self.postings_files_names = []
+        self.is_last_doc = False
+        self.size_of_last_posting = 0
 
     def add_new_doc(self, document):
         """
@@ -59,9 +62,13 @@ class Indexer:
 
                 self.num_of_terms += 1
 
-                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS:
+                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS or self.is_last_doc:
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
                     Indexer.PICKLE_COUNTER += 1
+                    Indexer.GLOBAL_TERM_COUNTER += len(sorted_keys_dict)
+
+                    if self.is_last_doc:
+                        self.size_of_last_posting = len(sorted_keys_dict)
 
                     pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "ab")
                     for key, value in sorted_keys_dict.items():
@@ -138,7 +145,7 @@ class Indexer:
     def read_part_of_posting(self, posting, num_of_file):
         """gets a posting NAME and it's index!! and reads it's content from the disk
            store the file descriptor fo current posting file"""
-        num_of_file += 1
+        num_of_file += 1  # this gives values of 1..* to file names, skipping 0
         pickle_in = open("{}".format(posting), "rb")
         if num_of_file in self.file_descriptor_dict:
             fdr = self.file_descriptor_dict[num_of_file]
@@ -146,12 +153,17 @@ class Indexer:
         part_of_posting = []
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
 
+        if num_of_file == Indexer.PICKLE_COUNTER:  #:if last last posting!!
+            if self.size_of_last_posting < amount_to_read:
+                amount_to_read = self.size_of_last_posting
+            else:
+                self.size_of_last_posting -= amount_to_read
+
         for i in range(amount_to_read):
             key_value = pickle.load(pickle_in)
             part_of_posting.append(key_value)
 
-        if num_of_file == 3:
-            print()
+        Indexer.GLOBAL_TERM_COUNTER -= len(part_of_posting)
 
         self.file_descriptor_dict[num_of_file] = pickle_in.seek(pickle_in.tell())
         pickle_in.close()
@@ -164,17 +176,14 @@ class Indexer:
         merged_dict = {}
         posting_with_min_key = 0  #:the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  #:the index in which the smallest key is
-        pivot = []
 
-        while (True):  #TODO: convert to NOT_FINISHED, we need to realize what is the break condition (entire corpus done)
+        while Indexer.GLOBAL_TERM_COUNTER > 0:
             for i in range(amount_to_read):  #: iterate all the loop!!!
                 pivot = self.files_to_merge[0][index_list[0]]
                 is_pivot = True
                 is_pivot_the_smallest = True
 
                 for j, idx in enumerate(index_list):
-                    if idx == 32:
-                        print()
                     if idx == amount_to_read:
                         #new read pickle!!
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[j], j)
@@ -206,8 +215,15 @@ class Indexer:
                     idx_in_min_key_posting = index_list[0]
                     index_list[0] += 1
 
-                # print(index_list)
                 merged_dict[pivot[0]] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
+
+                if index_list[0] == amount_to_read:
+                    #new read pickle!!
+                    posting_to_insert = self.read_part_of_posting(self.postings_files_names[0], 0)
+                    self.files_to_merge[0] = posting_to_insert
+                    index_list[0] = 0
+
+                # print(index_list)
 
                 #TODO:: need to count len of merged_dict. when hits Indexer.NUM_OF_TERMS_IN_POSTINGS -->>
                 #TODO:: write dict to a NEW!! posting file' with a unique name

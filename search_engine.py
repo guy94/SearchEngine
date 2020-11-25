@@ -20,7 +20,7 @@ def run_engine():
 
 
     corpus_list = r.read_corpus()
-    # for i in range(len(corpus_list)):
+    # for j in range(len(corpus_list)):
     # documents_list = r.read_file(file_name='sample3.parquet')
 
     start = time.time()
@@ -40,6 +40,9 @@ def run_engine():
         parsed_document = p.parse_doc(documents_list[i])
         amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
+
+        if i == 19:  # and j == len(corpus_list) - 1
+            indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
     print("dict len: {}".format(len(indexer.inverted_idx)))
 
