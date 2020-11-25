@@ -43,26 +43,27 @@ class Indexer:
         document_dictionary = document.term_doc_dictionary
         max_freq_term = document.max_freq_term
         # Go over each term in the doc
-
+        num_of_terms_last = 0
         for term in document_dictionary.keys():
+
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
                     self.inverted_idx[term] = [1, ""]
+                    self.num_of_terms += 1
                 else:
                     self.inverted_idx[term][0] += 1
 
                 term_freq = document_dictionary[term]
                 if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term)]
+                    num_of_terms_last += 1
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
-                self.num_of_terms += 1
-
-                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS or self.is_last_doc:
+                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS or (self.is_last_doc and num_of_terms_last == len(document_dictionary) - 1):
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
                     Indexer.PICKLE_COUNTER += 1
                     Indexer.GLOBAL_TERM_COUNTER += len(sorted_keys_dict)
@@ -78,6 +79,7 @@ class Indexer:
 
                     self.num_of_terms = 0
                     self.postingDict = {}
+
 
             except:
                 print('problem with the following key {}'.format(term))
