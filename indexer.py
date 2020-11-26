@@ -2,7 +2,6 @@ import concurrent
 import json
 import os
 import time
-
 from parser_module import Parse
 import _pickle as pickle
 import bisect
@@ -41,8 +40,9 @@ class Indexer:
         document_dictionary = document.term_doc_dictionary
         max_freq_term = document.max_freq_term
         # Go over each term in the doc
-
-        for term in document_dictionary.keys():
+        num_of_terms_last = 0
+        for term in document_dictionary:
+            num_of_terms_last += 1
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
@@ -64,6 +64,7 @@ class Indexer:
 
                     self.num_of_terms = 0
                     self.postingDict = {}
+
 
             except:
                 print('problem with the following key {}'.format(term))

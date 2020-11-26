@@ -38,7 +38,6 @@ def run_engine():
     for i in range(20):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
-
         if(i == 19):
             indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
@@ -85,7 +84,7 @@ def load_index():
 
 def search_and_rank_query(query, inverted_index, k):
     p = Parse()
-    query_as_list = p.parse_sentence(query)
+    query_as_list = p.parse_sentence(query)  ## send the Query to another functio
     searcher = Searcher(inverted_index)
     relevant_docs = searcher.relevant_docs_from_posting(query_as_list)
     ranked_docs = searcher.ranker.rank_relevant_doc(relevant_docs)
