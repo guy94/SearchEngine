@@ -38,13 +38,12 @@ def run_engine():
     for i in range(20):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
-        amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-        number_of_documents += 1
 
-        if i == 19:  # and j == len(corpus_list) - 1
+        if(i == 19):
             indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
-    print("dict len: {}".format(len(indexer.inverted_idx)))
+        amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+        number_of_documents += 1
 
     indexer.merge_files()
 
