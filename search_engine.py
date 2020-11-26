@@ -42,8 +42,6 @@ def run_engine():
 
         if i == 19:  # and j == len(corpus_list) - 1
             indexer.is_last_doc = True
-            print(len(parsed_document.term_doc_dictionary))
-            print(len(indexer.postingDict))
         indexer.add_new_doc(parsed_document)
     # print("dict len: {}".format(len(indexer.inverted_idx)))
 
