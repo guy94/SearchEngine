@@ -16,8 +16,11 @@ class Parse:
     capital_letter_dict_global = {}
     idx = 0
     entity_dict_global = {}
+    Parsing_a_word = False
 
     def __init__(self):
+        self.max_freq_term = 0
+        self.term_dict = {}
         self.stop_words = stopwords.words('english')
         self.our_stop_words = ["RT", "http", "https"]
         self.stop_words.extend(self.our_stop_words)
@@ -26,6 +29,7 @@ class Parse:
         self.is_num_after_num = False
         self.dict_punctuation = dict.fromkeys(string.punctuation)
         self.entity_dict = {}
+        self.location_dict = {}
         self.porter_stemmer = PorterStemmer()
 
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
@@ -37,6 +41,10 @@ class Parse:
         self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
         self.split_url_pattern = re.compile(r"[\w'|.|-]+")
 
+        self.emojis_pattern = re.compile(pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
+        u"\ufe0f"u"\U0001F1E0-\U0001F1FF"u"\u2640-\u2642"u"\u200d"u"\U00002500-\U00002BEF"u"\U00010000-\U0010ffff"u"\U0001f926-\U0001f937"u"\U000024C2-\U0001F251"u"\u23cf"
+        u"\u23e9"u"\u231a"u"\u2600-\u2B55""]+", flags=re.UNICODE)
+
     def parse_sentence(self, text):
         """
         This function tokenize, remove stop words and apply lower case for every word within the text
@@ -47,61 +55,16 @@ class Parse:
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
         self.tokens = text_tokens_without_stopwords
-        return text_tokens_without_stopwords
 
-    def parse_doc(self, doc_as_list):
-        """
-        This function takes a tweet document as list and break it into different fields
-        :param doc_as_list: list re-preseting the tweet.
-        :return: Document object with corresponding fields.
-        """
-        tweet_id = doc_as_list[0]
-        tweet_date = doc_as_list[1]
-        full_text = doc_as_list[2]
-        urls = doc_as_list[3]
-        indices = doc_as_list[4]
-        retweet_text = doc_as_list[5]
-        retweet_urls = doc_as_list[6]
-        retweet_indices = doc_as_list[7]
-        quoted_text = doc_as_list[8]
-        quote_urls = doc_as_list[9]
-        quoted_indices = doc_as_list[10]
-        retweet_quoted_text = doc_as_list[11]
-        retweet_quoted_urls = doc_as_list[12]
-        retweet_quoted_indices = doc_as_list[13]
-
-        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        tokenized_text = self.parse_sentence(full_text)
-        #tokenized_text = self.parse_sentence(concatenated_text)
-
-
-
-        ########################################
-        # TODO: check if indices needed
-        # indices_as_list = self.indices_as_list(indices)
-        # indices_retweet_as_list = self.indices_as_list(retweet_indices)
-        # indices_quoted_as_list = self.indices_as_list(quoted_indices)
-        # indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
-
-        raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
-        broken_urls = self.parse_url_text(raw_urls)
 
         last_number_parsed = None
         count_num_in_a_row = 0
         entity_counter = 1
         is_date = False
-        max_freq_term = 0
         term_dict = {}
+        if not Parse.Parsing_a_word:
+            term_dict = self.term_dict
 
-        for term in broken_urls:
-            if "http" not in term:
-                if term not in term_dict:
-                    term_dict[term] = 1
-                else:
-                    term_dict[term] += 1
-
-                if term_dict[term] > max_freq_term:
-                    max_freq_term = term_dict[term]
 
         for i, token in enumerate(self.tokens):
             if entity_counter > 1:
@@ -122,6 +85,8 @@ class Parse:
                 parsed_token_list = self.parse_hyphen(token, token_before)
                 count_num_in_a_row = 0
 
+            elif self.emojis_pattern.match(token):
+                continue
             elif token.isalpha():  #: capital letters and entities
 
                 entity_str = ""
@@ -135,11 +100,12 @@ class Parse:
                 token += entity_str
                 if entity_str != "":
                     parsed_token_list.append(token)
+                    if not Parse.Parsing_a_word:
 
-                    if token not in Parse.capital_letter_dict_global.keys():
-                        Parse.entity_dict_global[token] = 1
-                    else:
-                        Parse.entity_dict_global[token] += 1
+                        if token not in Parse.capital_letter_dict_global.keys():
+                            Parse.entity_dict_global[token] = 1
+                        else:
+                            Parse.entity_dict_global[token] += 1
 
                 count_num_in_a_row = 0
 
@@ -192,13 +158,18 @@ class Parse:
                             parsed_token_list_stemmer.append(word)
                     parsed_token_list = parsed_token_list_stemmer
 
-                for term in parsed_token_list:
+                for term in parsed_token_list:                                                      #TODO: if to put the query indicies
+                    if term not in self.location_dict:
+                        self.location_dict[term] = [(i, i + len(term))]
+                    else:
+                        self.location_dict[term].append((i, i + len(term)))
+
                     if term not in term_dict:
                         term_dict[term] = 1
                     else:
                         term_dict[term] += 1
-                    if term_dict[term] > max_freq_term:
-                        max_freq_term = term_dict[term]
+                    if term_dict[term] > self.max_freq_term:
+                        self.max_freq_term = term_dict[term]
         #############################
             else:
                 # if token not in self.dict_punctuation:
@@ -206,14 +177,73 @@ class Parse:
                     token = token.lower()
                     if self.stemmer:
                         token = self.porter_stemmer.stem(token)
+
+                    if term not in self.location_dict:
+                        self.location_dict[term] = [(i, i + len(term))]
+                    else:
+                        self.location_dict[term].append((i, i + len(term)))
+
                     if token not in term_dict:
                         term_dict[token] = 1
                     else:
                         term_dict[token] += 1
-                    if term_dict[token] > max_freq_term:
-                        max_freq_term = term_dict[token]
+                    if term_dict[token] > self.max_freq_term:
+                        self.max_freq_term = term_dict[token]
 
-        doc_length = len(tokenized_text)  # after text operations.
+        return term_dict
+
+    def parse_doc(self, doc_as_list):
+        """
+        This function takes a tweet document as list and break it into different fields
+        :param doc_as_list: list re-preseting the tweet.
+        :return: Document object with corresponding fields.
+        """
+        tweet_id = doc_as_list[0]
+        tweet_date = doc_as_list[1]
+        full_text = doc_as_list[2]
+        urls = doc_as_list[3]
+        indices = doc_as_list[4]
+        retweet_text = doc_as_list[5]
+        retweet_urls = doc_as_list[6]
+        retweet_indices = doc_as_list[7]
+        quoted_text = doc_as_list[8]
+        quote_urls = doc_as_list[9]
+        quoted_indices = doc_as_list[10]
+        retweet_quoted_text = doc_as_list[11]
+        retweet_quoted_urls = doc_as_list[12]
+        retweet_quoted_indices = doc_as_list[13]
+
+        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
+        #tokenized_text = self.parse_sentence(concatenated_text)
+
+
+        ########################################
+        # TODO: check if indices needed
+        # indices_as_list = self.indices_as_list(indices)
+        # indices_retweet_as_list = self.indices_as_list(retweet_indices)
+        # indices_quoted_as_list = self.indices_as_list(quoted_indices)
+        # indices_retweet_quoted_as_list = self.indices_as_list(retweet_quoted_indices)
+
+        raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
+        broken_urls = self.parse_url_text(raw_urls)
+
+
+        for term in broken_urls:
+            if "http" not in term:
+                if term not in self.term_dict:
+                    self.term_dict[term] = 1
+                else:
+                    self.term_dict[term] += 1
+
+                if self.term_dict[term] > self.max_freq_term:
+                    self.max_freq_term = self.term_dict[term]
+
+        term_dict = self.parse_sentence(full_text)
+        #
+        # for key in term_dict:
+        #     location_dict[key]
+
+        doc_length = len(self.tokens)  # after text operations.
         # for term in tokenized_text:
         #     if term not in term_dict.keys():
         #         term_dict[term] = 1
@@ -221,8 +251,11 @@ class Parse:
         #         term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
-                            quote_urls, term_dict, doc_length, max_freq_term)
+                            quote_urls, term_dict, doc_length, self.max_freq_term)
 
+        self.max_freq_term = 0
+        self.term_dict = {}
+        self.location_dict = {}
         # print("full text" + concatenated_text)
         # print("--------------------")
         # print("urls" + str(broken_urls))

@@ -12,11 +12,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Indexer:
     PICKLE_COUNTER = 0
-    NUM_OF_TERMS_IN_POSTINGS = 100
+    NUM_OF_TERMS_IN_POSTINGS = 30
     FINAL_POSTINGS_COUNTER = 0
     GLOBAL_TERM_COUNTER = 0
 
     def __init__(self, config):
+        self.pull_list = []
+        self.reminder = 0
+        self.current_pull = 0
         self.inverted_idx = {}
         self.postingDict = {}
         self.config = config
@@ -28,7 +31,7 @@ class Indexer:
         self.postings_files_names = []
         self.is_last_doc = False
         self.size_of_last_posting = 0
-
+        self.dicts = []
     def add_new_doc(self, document):
         """
         This function perform indexing process for a document object.
@@ -61,12 +64,14 @@ class Indexer:
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term))
+                    num_of_terms_last += 1
                     # self.postingDict[term].append((document.tweet_id, document_dictionary[term]))
 
-                if self.num_of_terms == Indexer.NUM_OF_TERMS_IN_POSTINGS or (self.is_last_doc and num_of_terms_last == len(document_dictionary) - 1):
+                if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS or (self.is_last_doc and num_of_terms_last == len(document_dictionary) - 1):
                     sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
                     Indexer.PICKLE_COUNTER += 1
                     Indexer.GLOBAL_TERM_COUNTER += len(sorted_keys_dict)
+                    self.dicts.append(sorted_keys_dict)
 
                     if self.is_last_doc:
                         self.size_of_last_posting = len(sorted_keys_dict)
@@ -161,9 +166,14 @@ class Indexer:
             else:
                 self.size_of_last_posting -= amount_to_read
 
-        for i in range(amount_to_read):
-            key_value = pickle.load(pickle_in)
-            part_of_posting.append(key_value)
+        if self.reminder > 0 and self.pull_list[self.current_pull] == Indexer.PICKLE_COUNTER:
+            amount_to_read += self.reminder
+        try:
+            for i in range(amount_to_read):
+                key_value = pickle.load(pickle_in)
+                part_of_posting.append(key_value)
+        except:
+            print(Indexer.PICKLE_COUNTER)
 
         Indexer.GLOBAL_TERM_COUNTER -= len(part_of_posting)
 
@@ -173,8 +183,10 @@ class Indexer:
         return part_of_posting
 
     def k_elements_sort(self):
+        self.reminder = Indexer.NUM_OF_TERMS_IN_POSTINGS % Indexer.PICKLE_COUNTER
         amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
         index_list = [0] * Indexer.PICKLE_COUNTER
+        self.pull_list = [1] * Indexer.PICKLE_COUNTER
         merged_dict = {}
         posting_with_min_key = 0  #:the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  #:the index in which the smallest key is
@@ -184,10 +196,11 @@ class Indexer:
                 pivot = self.files_to_merge[0][index_list[0]]
                 is_pivot = True
                 is_pivot_the_smallest = True
-
                 for j, idx in enumerate(index_list):
                     if idx == amount_to_read:
                         #new read pickle!!
+                        self.pull_list[j] += 1
+                        self.current_pull = j
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[j], j)
                         #TODO: idx is not updated
                         self.files_to_merge[j] = posting_to_insert
@@ -221,6 +234,8 @@ class Indexer:
 
                 if index_list[0] == amount_to_read:
                     #new read pickle!!
+                    self.pull_list[0] += 1
+                    self.current_pull = 0
                     posting_to_insert = self.read_part_of_posting(self.postings_files_names[0], 0)
                     self.files_to_merge[0] = posting_to_insert
                     index_list[0] = 0
