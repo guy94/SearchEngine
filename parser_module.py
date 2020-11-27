@@ -102,7 +102,6 @@ class Parse:
                 if entity_str != "":
                     parsed_token_list.append(token)
                     if not Parse.Parsing_a_word:
-
                         if token not in Parse.capital_letter_dict_global.keys():
                             Parse.entity_dict_global[token] = 1
                         else:

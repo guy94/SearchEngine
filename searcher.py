@@ -1,6 +1,10 @@
+import json
+
+from indexer import Indexer
 from parser_module import Parse
 from ranker import Ranker
 import utils
+import _pickle as pickle
 
 
 class Searcher:
@@ -12,6 +16,10 @@ class Searcher:
         self.parser = Parse()
         self.ranker = Ranker()
         self.inverted_index = inverted_index
+        self.current_file_name = ""
+        self.current_posting = None
+        self.term_posting_dict = {}
+
 
     def relevant_docs_from_posting(self, query):
         """
@@ -19,6 +27,19 @@ class Searcher:
         :param query: query
         :return: dictionary of relevant documents.
         """
+        sorted_query = {k: query[k] for k in sorted(query)}
+        for term in sorted_query:
+            posting_file_to_load = self.inverted_index[term][1]
+            if posting_file_to_load != self.current_file_name:
+                self.current_file_name = posting_file_to_load
+                self.current_posting = self.read_posting(posting_file_to_load)
+
+            if term in self.current_posting:
+                self.term_posting_dict[term] = self.current_posting[term]
+
+        print(self.term_posting_dict)
+
+
         posting = utils.load_obj("posting")
         relevant_docs = {}
         for term in query:
@@ -33,3 +54,22 @@ class Searcher:
             except:
                 print('term {} not found in posting'.format(term))
         return relevant_docs
+
+    def read_posting(self, posting_name):
+        #TODO: MOTEK this is the loading format. i didnt test it. good luck
+        pickle_in = open("{}".format(posting_name), "rb")
+        dict_to_load = ""
+        for j in range(Indexer.NUM_OF_TERMS_IN_POSTINGS):
+                try:
+                    if dict_to_load == "":
+                        dict_to_load = pickle.load(pickle_in)
+                    else:
+                        dict_to_load += ", " + pickle.load(pickle_in)
+                except:
+                       break
+        dict_to_load = "{" + dict_to_load + "}"
+        dict_to_load = json.loads(dict_to_load)
+
+        pickle_in.close()
+
+        return dict_to_load

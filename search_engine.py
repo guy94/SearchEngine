@@ -5,6 +5,7 @@ from indexer import Indexer
 from searcher import Searcher
 import utils
 import time
+import _pickle as pickle
 
 
 def run_engine():
@@ -35,13 +36,13 @@ def run_engine():
     # for i in range(10):
     documents_list = r.read_file(file_name=corpus_list[1])
     # parsed_document = p.parse_doc(documents_list[163322])
-    for i in range(20):
+    for i in range(len(documents_list)):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
-        if(i == 19):
+        if(i == len(documents_list) - 1):
             indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
-        amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+        # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
         number_of_documents += 1
 
     indexer.merge_files()
@@ -72,13 +73,20 @@ def run_engine():
     print('Finished parsing and indexing. Starting to export files')
     print("number of docs: {}".format(number_of_documents))
 
-    utils.save_obj(indexer.inverted_idx, "inverted_idx")
+
+    # utils.save_obj(indexer.inverted_idx, "inverted_idx")
     # utils.save_obj(indexer.postingDict, "posting")
+
+    pickle_out = open("inverted_indedx", "wb")
+    pickle.dump(indexer.inverted_idx, pickle_out)
+    pickle_out.close()
 
 
 def load_index():
     print('Load inverted index')
-    inverted_index = utils.load_obj("inverted_idx")
+    # inverted_index = utils.load_obj("inverted_idx")
+    pickle_in = open("inverted_index", "rb")
+    inverted_index = pickle.load(pickle_in)
     return inverted_index
 
 
