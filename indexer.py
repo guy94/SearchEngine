@@ -10,11 +10,13 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Indexer:
     PICKLE_COUNTER = 0
-    NUM_OF_TERMS_IN_POSTINGS = 150000
+    NUM_OF_TERMS_IN_POSTINGS = 100
     FINAL_POSTINGS_COUNTER = 0
     TOTAL_TERMS_AFTER_MERGE = 0
 
     def __init__(self, config):
+
+        self.not_finished_capital = {}
         self.inverted_idx = {}
         self.postingDict = {}
         self.config = config
@@ -85,21 +87,30 @@ class Indexer:
             pickle.dump([key, value], pickle_out)
         pickle_out.close()
 
-    def remove_capital_entity(self, key, num_of_file, idx):
+    def remove_capital_entity(self, key, merge_dict):
 
-        if Parse.entity_dict_global[key] < 2:
+        if key in Parse.entity_dict_global and Parse.entity_dict_global[key] < 2:
             if key in self.inverted_idx:
                 del self.inverted_idx[key]
-                self.files_to_merge[num_of_file].pop(idx)
+                del merge_dict[key]
 
-            if Parse.capital_letter_dict_global[key] is False:
-                if key in self.inverted_idx:
-                    count_docs = self.inverted_idx[key]
-                    posting_file = self.files_to_merge[num_of_file][idx][1]
-                    del self.inverted_idx[key]
-                    self.files_to_merge[num_of_file].pop(idx)
+        if key in Parse.capital_letter_dict_global and Parse.capital_letter_dict_global[key] is False:
+            if key in self.inverted_idx:
+                count_docs = self.inverted_idx[key]
+                posting_file = merge_dict[key]
+                del self.inverted_idx[key]
+                del merge_dict[key]
+                if key.lower() in merge_dict:
                     self.inverted_idx[key.lower()] += count_docs
-                    self.files_to_merge[num_of_file][idx][1] .extend(posting_file)
+                    merge_dict[key.lower()].extend(posting_file)
+                else:
+                    self.not_finished_capital[key.lower] = [count_docs, posting_file]
+                    
+        if key in self.not_finished_capital:
+            count_docs_to_delete = self.not_finished_capital[key][0]
+            posting_dict_to_delete = self.not_finished_capital[key][1]
+            self.inverted_idx[key.lower()] += count_docs_to_delete
+            merge_dict[key.lower()].extend(posting_dict_to_delete)
 
     def merge_files(self):
         self.postings_files_names = [os.path.join(d, x)
@@ -114,7 +125,7 @@ class Indexer:
 
         print("inverted size is {}".format(len(self.inverted_idx)))
         print("total terms merged {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
-        # self.test_func()
+
 
     # def test_func(self):
         # pickle_in1 = open("postings\\posting_1", "rb")
@@ -329,6 +340,8 @@ class Indexer:
         file_name = "finalPostings\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
         pickle_out = open(file_name, "wb")
         for key, value in merged_dict.items():
+            if key.isalpha() and key.isupper():
+                self.remove_capital_entity(key, merged_dict)
             pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
             self.inverted_idx[key][1] = file_name
         pickle_out.close()
@@ -350,12 +363,10 @@ class Indexer:
         result += left[left_index:]
         result += right[right_index:]
 
-        # self.test_merge(result)
-
         return result
 
     # def test_merge(self, result):
     #     for i in range(len(result) - 1):
     #         if result[i][0] > result[i+1][0]:
     #             print(False)
-        # print(True)
+    #     # print(True)

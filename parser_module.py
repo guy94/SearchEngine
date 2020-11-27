@@ -51,10 +51,14 @@ class Parse:
         :param text:
         :return:
         """
+        text = "Alexandria Ocasio-Cortez"
+        # TODO: how to split the urls and what is need to do different
         extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
         self.tokens = text_tokens_without_stopwords
+        
+
 
         last_number_parsed = None
         count_num_in_a_row = 0
@@ -63,6 +67,7 @@ class Parse:
         term_dict = {}
         if not Parse.Parsing_a_word:
             term_dict = self.term_dict
+
 
         for i, token in enumerate(self.tokens):
             if entity_counter > 1:
@@ -89,7 +94,7 @@ class Parse:
 
                 entity_str = ""
                 if entity_counter == 1:
-                    while token.istitle() and i + entity_counter < len(self.tokens) and self.tokens[i + entity_counter].istitle():
+                    while token.istitle() and i + entity_counter < len(self.tokens) and (self.tokens[i + entity_counter].istitle() or self.istitle_with_hyphen(self.tokens[i + entity_counter])):
                         entity_str += " " + self.tokens[i + entity_counter]
                         entity_counter += 1
                     entity_counter += 1
@@ -118,6 +123,7 @@ class Parse:
                     parsed_token_list = self.parse_hashtag(token + self.tokens[i + 1])
                     count_num_in_a_row = 0
                     self.tokens.pop(i+1)
+
 
             elif is_date:  # date format
                 parsed_token_list = [token]
@@ -155,7 +161,7 @@ class Parse:
                             parsed_token_list_stemmer.append(word)
                     parsed_token_list = parsed_token_list_stemmer
 
-            for term in parsed_token_list:  #TODO: if to put the query indicies
+                for term in parsed_token_list:
                     if term not in self.location_dict:
                         self.location_dict[term] = [(i, i + len(term))]
                     else:
@@ -236,10 +242,19 @@ class Parse:
                     self.max_freq_term = self.term_dict[term]
 
         term_dict = self.parse_sentence(full_text)
+        #
+        # for key in term_dict:
+        #     location_dict[key]
+
         doc_length = len(self.tokens)  # after text operations.
+        # for term in tokenized_text:
+        #     if term not in term_dict.keys():
+        #         term_dict[term] = 1
+        #     else:
+        #         term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
-                            quote_urls, term_dict, doc_length, self.max_freq_term)
+                            quote_urls, term_dict, self.location_dict, doc_length, self.max_freq_term)
 
         self.max_freq_term = 0
         self.term_dict = {}
@@ -509,6 +524,18 @@ class Parse:
 
         return tweet_to_return
 
+
+    def istitle_with_hyphen(self,token):
+        
+        if "-" in token:
+            hyphen_index = token.find("-")
+            before_hyphen = token[:hyphen_index]
+            after_hyphen = token[hyphen_index:]
+            if before_hyphen.istitle() and after_hyphen.istitle():
+                return True
+        
+        return False
+            
     def tes_func(self):
 
         ###### hashtags #######
