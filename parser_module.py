@@ -28,7 +28,6 @@ class Parse:
         self.tokens = None
         self.is_num_after_num = False
         self.dict_punctuation = dict.fromkeys(string.punctuation)
-        self.entity_dict = {}
         self.location_dict = {}
         self.porter_stemmer = PorterStemmer()
 
@@ -51,7 +50,6 @@ class Parse:
         :param text:
         :return:
         """
-        text = "Alexandria Ocasio-Cortez"
         # TODO: how to split the urls and what is need to do different
         extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
@@ -181,10 +179,10 @@ class Parse:
                     if self.stemmer:
                         token = self.porter_stemmer.stem(token)
 
-                    if term not in self.location_dict:
-                        self.location_dict[term] = [(i, i + len(term))]
+                    if token not in self.location_dict:
+                        self.location_dict[token] = [(i, i + len(token))]
                     else:
-                        self.location_dict[term].append((i, i + len(term)))
+                        self.location_dict[token].append((i, i + len(token)))
 
                     if token not in term_dict:
                         term_dict[token] = 1

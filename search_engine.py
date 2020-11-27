@@ -28,17 +28,17 @@ def run_engine():
     # parsed_document = p.parse_doc(documents_list[249863])
     # parsed_document = p.parse_doc(documents_list[2792])
     # parsed_document = p.parse_doc(documents_list[15000])
-    Parse.stemmer = True
+    Parse.stemmer = False
     amount_with_stemmer = 0
     amount_with_out_stemmer = 0
 
     # for i in range(10):
-    documents_list = r.read_file(file_name=corpus_list[0])
+    documents_list = r.read_file(file_name=corpus_list[1])
     # parsed_document = p.parse_doc(documents_list[163322])
-    for i in range(len(documents_list)):
+    for i in range(20):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
-        if(i == len(documents_list)-1):
+        if(i == 19):
             indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
         amount_with_stemmer += len(parsed_document.term_doc_dictionary)
