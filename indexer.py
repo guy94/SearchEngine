@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 class Indexer:
     PICKLE_COUNTER = 0
-    NUM_OF_TERMS_IN_POSTINGS = 100
+    NUM_OF_TERMS_IN_POSTINGS = 150000
     FINAL_POSTINGS_COUNTER = 0
     TOTAL_TERMS_AFTER_MERGE = 0
 
@@ -85,24 +85,21 @@ class Indexer:
             pickle.dump([key, value], pickle_out)
         pickle_out.close()
 
-    def remove_capital_entity(self):
+    def remove_capital_entity(self, key, num_of_file, idx):
 
-        entity_dict_keys = Parse.entity_dict_global.keys()
-        for key in entity_dict_keys:
-            if Parse.entity_dict_global[key] < 2:
+        if Parse.entity_dict_global[key] < 2:
+            if key in self.inverted_idx:
                 del self.inverted_idx[key]
-                del self.postingDict[key]
+                self.files_to_merge[num_of_file].pop(idx)
 
-        capital_dict_keys = Parse.capital_letter_dict_global.keys()
-        for key in capital_dict_keys:
             if Parse.capital_letter_dict_global[key] is False:
                 if key in self.inverted_idx:
                     count_docs = self.inverted_idx[key]
-                    posting_file = self.postingDict[key]
+                    posting_file = self.files_to_merge[num_of_file][idx][1]
                     del self.inverted_idx[key]
-                    del self.postingDict[key]
+                    self.files_to_merge[num_of_file].pop(idx)
                     self.inverted_idx[key.lower()] += count_docs
-                    self.postingDict[key.lower()].extend(posting_file)
+                    self.files_to_merge[num_of_file][idx][1] .extend(posting_file)
 
     def merge_files(self):
         self.postings_files_names = [os.path.join(d, x)
@@ -270,8 +267,6 @@ class Indexer:
                         continue
 
                     current_key = self.files_to_merge[j][idx]
-                    if pivot[0] == "bind" or current_key == "bind":
-                        print()
                     if current_key[0] == pivot[0] and not is_pivot:
                         posting_with_min_key = pivot_indices[0]
                         idx_in_min_key_posting = pivot_indices[1]
@@ -355,12 +350,12 @@ class Indexer:
         result += left[left_index:]
         result += right[right_index:]
 
-        self.test_merge(result)
+        # self.test_merge(result)
 
         return result
 
-    def test_merge(self, result):
-        for i in range(len(result) - 1):
-            if result[i][0] > result[i+1][0]:
-                print(False)
+    # def test_merge(self, result):
+    #     for i in range(len(result) - 1):
+    #         if result[i][0] > result[i+1][0]:
+    #             print(False)
         # print(True)

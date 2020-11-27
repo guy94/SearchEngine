@@ -56,7 +56,6 @@ class Parse:
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
         self.tokens = text_tokens_without_stopwords
 
-
         last_number_parsed = None
         count_num_in_a_row = 0
         entity_counter = 1
@@ -64,7 +63,6 @@ class Parse:
         term_dict = {}
         if not Parse.Parsing_a_word:
             term_dict = self.term_dict
-
 
         for i, token in enumerate(self.tokens):
             if entity_counter > 1:
@@ -121,7 +119,6 @@ class Parse:
                     count_num_in_a_row = 0
                     self.tokens.pop(i+1)
 
-
             elif is_date:  # date format
                 parsed_token_list = [token]
 
@@ -158,7 +155,7 @@ class Parse:
                             parsed_token_list_stemmer.append(word)
                     parsed_token_list = parsed_token_list_stemmer
 
-                for term in parsed_token_list:                                                      #TODO: if to put the query indicies
+            for term in parsed_token_list:  #TODO: if to put the query indicies
                     if term not in self.location_dict:
                         self.location_dict[term] = [(i, i + len(term))]
                     else:
@@ -239,16 +236,7 @@ class Parse:
                     self.max_freq_term = self.term_dict[term]
 
         term_dict = self.parse_sentence(full_text)
-        #
-        # for key in term_dict:
-        #     location_dict[key]
-
         doc_length = len(self.tokens)  # after text operations.
-        # for term in tokenized_text:
-        #     if term not in term_dict.keys():
-        #         term_dict[term] = 1
-        #     else:
-        #         term_dict[term] += 1
 
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, doc_length, self.max_freq_term)
