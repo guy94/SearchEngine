@@ -27,10 +27,10 @@ def run_engine():
     start = time.time()
     Parse.stemmer = False
 
-    documents_list = r.read_file(file_name=corpus_list[1])
-    for i in range(len(documents_list)):
+    # documents_list = r.read_file(file_name=corpus_list[1])
+    # for i in range(len(documents_list)):
         # print(str(number_of_documents))
-        parsed_document = p.parse_doc(documents_list[i])
+        # parsed_document = p.parse_doc(documents_list[i])
         # if(i == len(documents_list) - 1):
         #     indexer.is_last_doc = True
         # indexer.add_new_doc(parsed_document)
@@ -68,9 +68,9 @@ def run_engine():
     # utils.save_obj(indexer.inverted_idx, "inverted_idx")
     # utils.save_obj(indexer.postingDict, "posting")
 
-    pickle_out = open("inverted_index", "wb")
-    pickle.dump(indexer.inverted_idx, pickle_out)
-    pickle_out.close()
+    # pickle_out = open("inverted_index", "wb")
+    # pickle.dump(indexer.inverted_idx, pickle_out)
+    # pickle_out.close()
 
 
 def load_index():
@@ -85,7 +85,7 @@ def search_and_rank_query(query, inverted_index, k):
     p = Parse()
     query = p.parse_query(query)
     searcher = Searcher(inverted_index)
-    relevant_docs = searcher.relevant_docs_from_posting(query_as_list)
+    relevant_docs = searcher.relevant_docs_from_posting(query)
     ranked_docs = searcher.ranker.rank_relevant_doc(relevant_docs)
     return searcher.ranker.retrieve_top_k(ranked_docs, k)
 
