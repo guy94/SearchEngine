@@ -3,10 +3,9 @@ import re
 import string
 from urllib.parse import urlparse
 import spacy
-from query import query
+from query import query_object
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from Spell_Correction import spell
 from document import Document
 import json
 from nltk.stem.snowball import SnowballStemmer
@@ -211,7 +210,7 @@ class Parse:
         location_dict = self.location_dict
         max_freq = self.max_freq_term
         query_length = len(query_dict)
-        query = query(query_dict, query_length, max_freq, location_dict)
+        query = query_object(query_dict, query_length, max_freq, location_dict)
         self.max_freq_term = 0
         self.term_dict = {}
         self.location_dict = {}

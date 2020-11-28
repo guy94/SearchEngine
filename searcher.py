@@ -5,11 +5,12 @@ from parser_module import Parse
 from ranker import Ranker
 import utils
 import _pickle as pickle
-
+import math
+from query import query_object
 
 class Searcher:
 
-    def __init__(self, inverted_index):
+    def __init__(self, inverted_index, number_of_documents):
         """
         :param inverted_index: dictionary of inverted index
         """
@@ -18,7 +19,11 @@ class Searcher:
         self.inverted_index = inverted_index
         self.current_file_name = ""
         self.current_posting = None
+
         self.term_posting_dict = {}
+        self.sorted_query_dict = {}
+        self.number_of_documents = number_of_documents
+        self.docs_dict = {}
 
     def relevant_docs_from_posting(self, query):
         """
@@ -26,15 +31,16 @@ class Searcher:
         :param query: query
         :return: dictionary of relevant documents.
         """
-        sorted_query = {k: query[k] for k in sorted(query)}
-        for term in sorted_query:
+        query_dict = query.query_dict
+        self.sorted_query_dict = {k: query_dict[k] for k in sorted(query_dict)}
+        for term in self.sorted_query_dict:
             if term in self.inverted_index:
                 posting_file_to_load = self.inverted_index[term][1]
-
             elif term.lower() in self.inverted_index:
-                posting_file_to_load = self.inverted_index[term][1]
+                posting_file_to_load = self.inverted_index[term.lower()][1]
+            else:
+                continue
 
-            # TODO: ELSE!!! what if term not in inverted index
             if posting_file_to_load != self.current_file_name:
                 self.current_file_name = posting_file_to_load
                 self.current_posting = self.read_posting(posting_file_to_load)
@@ -42,26 +48,45 @@ class Searcher:
             if term in self.current_posting:
                 self.term_posting_dict[term] = self.current_posting[term]
 
-        # posting = utils.load_obj("posting")
-        # relevant_docs = {}
-        # for term in query:
-        #     try:  # an example of checks that you have to do
-        #         posting_doc = posting[term]
-        #         for doc_tuple in posting_doc:
-        #             doc = doc_tuple[0]
-        #             if doc not in relevant_docs.keys():
-        #                 relevant_docs[doc] = 1
-        #             else:
-        #                 relevant_docs[doc] += 1
-        #     except:
-        #         print('term {} not found in posting'.format(term))
-        # return relevant_docs
-        return self.term_posting_dict
+        self.document_dict_init(self.term_posting_dict, query)
+
+        return self.docs_dict
 
     def read_posting(self, posting_name):
-        # TODO: MOTEK this is the loading format. i didnt test it. good luck
         pickle_in = open("{}".format(posting_name), "rb")
         dict_to_load = pickle.load(pickle_in)
         pickle_in.close()
 
         return dict_to_load
+
+    def document_dict_init(self, postings_dict, query):
+
+        tf_idf_list = [0] * query.query_length
+        sorted_posting_dict = {k: postings_dict[k] for k in sorted(postings_dict)}
+
+        for idx, (term, doc_list) in enumerate(sorted_posting_dict.items()):
+            for doc_tuple in doc_list:
+                if doc_tuple[0] not in self.docs_dict:
+                    self.docs_dict[doc_tuple[0]] = tf_idf_list
+
+                dfi = self.inverted_index[term][0]
+
+                idf = math.log(self.number_of_documents / dfi, 10)
+                tf_idf = idf * doc_tuple[2]
+
+                self.docs_dict[doc_tuple[0]][idx] = tf_idf
+                tf_idf_list = [0] * query.query_length
+            print(dfi)
+
+    def normalized_query(self, query):
+        normalized = []
+        max_freq_term = query.max_freq_term
+
+        for key in self.sorted_query_dict:
+            tf = self.sorted_query_dict[key]
+            normalized.append(tf / max_freq_term)
+
+        return normalized
+
+
+

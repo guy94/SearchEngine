@@ -1,4 +1,4 @@
-class query:
+class query_object:
 
     def __init__(self, query_dict, query_length, max_freq_term, location_dict=None):
         """
