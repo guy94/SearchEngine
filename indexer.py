@@ -62,13 +62,13 @@ class Indexer:
                 term_freq = document_dictionary[term]
 
                 if term not in self.postingDict :
-                    self.postingDict[term] = [(document.tweet_id)]#, document_dictionary[term], term_freq / max_freq_term,
-                                               #list_of_indices)]
+                    self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
+                                               list_of_indices)] #TODO: add len(DOC)
 
                 else:
                     bisect.insort(self.postingDict[term],
-                                  (document.tweet_id))#, document_dictionary[term], term_freq / max_freq_term,
-                                    #list_of_indices))
+                                  (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
+                                    list_of_indices))
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     self.dump_from_indexer_to_disk()
@@ -105,14 +105,15 @@ class Indexer:
         if key in Parse.entity_dict_global and Parse.entity_dict_global[key] < 2:
             if key in self.inverted_idx:
                 del self.inverted_idx[key]
-                merge_dict[key] = []
+                del merge_dict[key]
 
         if key in Parse.capital_letter_dict_global and Parse.capital_letter_dict_global[key] is False:
             if key in self.inverted_idx:
                 count_docs = self.inverted_idx[key]
                 posting_file = merge_dict[key]
                 del self.inverted_idx[key]
-                merge_dict[key] = []
+                del merge_dict[key]
+
                 if key.lower() in merge_dict:
                     self.inverted_idx[key.lower()] += count_docs
                     merge_dict[key.lower()].extend(posting_file)
@@ -450,22 +451,23 @@ class Indexer:
         Indexer.FINAL_POSTINGS_COUNTER += 1
         file_name = "finalPostings\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
         pickle_out = open(file_name, "wb")
-
+        pickle.dump(merged_dict, pickle_out)
         num_of_pops = 0
-        for key, value in merged_dict.items():
-            # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+
+        for key in list(merged_dict):
             self.inverted_idx[key][1] = file_name
             if key in Parse.entity_dict_global or key in Parse.capital_letter_dict_global:
                 self.remove_capital_entity(key, merged_dict)
-                if merged_dict[key]:
-                    self.inverted_idx[key][1] = file_name
-                    pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
-                else:
-                    num_of_pops += 1
+                # if key in self.inverted_idxmerged_dict[key]:
+                #     self.inverted_idx[key][1] = file_name
+                #     # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+                # else:
+                #     num_of_pops += 1
+            # else:
+            #     self.inverted_idx[key][1] = file_name
+                # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
 
-            else:
-                self.inverted_idx[key][1] = file_name
-                pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
+        pickle.dump(merged_dict, pickle_out)
         pickle_out.close()
         Indexer.TOTAL_TERMS_AFTER_MERGE += (len(merged_dict) - num_of_pops)
 

@@ -25,17 +25,9 @@ def run_engine():
     # documents_list = r.read_file(file_name='sample3.parquet')
 
     start = time.time()
-    # documents_list = r.read_file(file_name=corpus_list[0])
-    # parsed_document = p.parse_doc(documents_list[249863])
-    # parsed_document = p.parse_doc(documents_list[2792])
-    # parsed_document = p.parse_doc(documents_list[15000])
     Parse.stemmer = False
-    amount_with_stemmer = 0
-    amount_with_out_stemmer = 0
 
-    # for i in range(10):
     documents_list = r.read_file(file_name=corpus_list[1])
-    # parsed_document = p.parse_doc(documents_list[163322])
     for i in range(len(documents_list)):
         # print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
@@ -47,7 +39,6 @@ def run_engine():
 
     indexer.merge_files()
 
-    # print("avg time with a stop words dict: {}".format(total_time / 30))
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
     #     print(number_of_documents)
@@ -77,7 +68,7 @@ def run_engine():
     # utils.save_obj(indexer.inverted_idx, "inverted_idx")
     # utils.save_obj(indexer.postingDict, "posting")
 
-    pickle_out = open("inverted_indedx", "wb")
+    pickle_out = open("inverted_index", "wb")
     pickle.dump(indexer.inverted_idx, pickle_out)
     pickle_out.close()
 
