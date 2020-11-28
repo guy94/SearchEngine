@@ -40,9 +40,16 @@ class Parse:
         self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}([-\.\/]\d{1,4})?")
 
         self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?[_-]([A-Z]*[a-z]*)([\d]*)?")
+
         self.url_puctuation_pattern = re.compile("[:/=?#]")
+
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
+
         self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
+
+        self.url_pattern_query = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+
+
         self.split_url_pattern = re.compile(r"[\w'|.|-]+")
 
         self.emojis_pattern = re.compile(pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
@@ -70,6 +77,23 @@ class Parse:
         term_dict = {}
         if not Parse.Parsing_a_word:
             term_dict = self.term_dict
+
+        if Parse.Parsing_a_word:
+            broken_urls = self.url_pattern_query.findall(text)
+            broken_urls = self.parse_url_text(broken_urls)
+            for term in broken_urls:
+                if "http" not in term:
+                    if term.isalpha():
+                        if term[0].isupper():
+                            term = term.upper()
+                        else:
+                            term = term.lower()
+                    if term not in self.term_dict:
+                        term_dict[term] = 1
+                    else:
+                        term_dict[term] += 1
+                    if term_dict[term] > self.max_freq_term:
+                        self.max_freq_term = term_dict[term]
 
 
         for i, token in enumerate(self.tokens):
@@ -151,8 +175,7 @@ class Parse:
                 else:
                     parsed_token_list = number_as_list
 
-            if Parse.Parsing_a_word:
-                parsed_token_list.extend(self.split_url_pattern.findall(text))
+
 
             if len(parsed_token_list) > 0:
 

@@ -25,17 +25,17 @@ def run_engine():
     start = time.time()
     Parse.stemmer = False
 
-    # documents_list = r.read_file(file_name=corpus_list[1])
-    # for i in range(len(documents_list)):
-    #     print(str(number_of_documents))
-    #     parsed_document = p.parse_doc(documents_list[i])
-    #     if(i == len(documents_list) - 1):
-    #         indexer.is_last_doc = True
-    #     indexer.add_new_doc(parsed_document)
-    #     # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-    #     number_of_documents += 1
-    #
-    # indexer.merge_files()
+    documents_list = r.read_file(file_name=corpus_list[1])
+    for i in range(len(documents_list)):
+        parsed_document = p.parse_doc(documents_list[i])
+        parse = p.parse_query("RT @thekatiemorgan: @Kevinlsx Sure! Wear a mask 😷 😜 https://t.co/AwcdolotcV https://t.co/AwcdolotcV")
+        # if(i == len(documents_list) - 1):
+        #     indexer.is_last_doc = True
+        # indexer.add_new_doc(parsed_document)
+        # # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+        # number_of_documents += 1
+
+    indexer.merge_files()
 
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
