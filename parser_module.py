@@ -1,14 +1,18 @@
+from datetime import datetime
 import re
 import string
 from urllib.parse import urlparse
 import spacy
+from query import query
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+from Spell_Correction import spell
 from document import Document
 import json
-import json
-from nltk.stem import PorterStemmer
+from nltk.stem.snowball import SnowballStemmer
 nlp = spacy.load("en_core_web_sm")
+
+
 
 
 class Parse:
@@ -29,11 +33,13 @@ class Parse:
         self.is_num_after_num = False
         self.dict_punctuation = dict.fromkeys(string.punctuation)
         self.location_dict = {}
-        self.porter_stemmer = PorterStemmer()
+        self.snow_stemmer = SnowballStemmer(language='english')
 
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
                                     "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
-        self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}[-\.\/]\d{1,4}")
+
+        self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}([-\.\/]\d{1,4})?")
+
         self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?[_-]([A-Z]*[a-z]*)([\d]*)?")
         self.url_puctuation_pattern = re.compile("[:/=?#]")
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
@@ -50,12 +56,12 @@ class Parse:
         :param text:
         :return:
         """
+
         # TODO: how to split the urls and what is need to do different
         extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
         self.tokens = text_tokens_without_stopwords
-        
 
 
         last_number_parsed = None
@@ -89,7 +95,6 @@ class Parse:
             elif self.emojis_pattern.match(token):
                 continue
             elif token.isalpha():  #: capital letters and entities
-
                 entity_str = ""
                 if entity_counter == 1:
                     while token.istitle() and i + entity_counter < len(self.tokens) and (self.tokens[i + entity_counter].istitle() or self.istitle_with_hyphen(self.tokens[i + entity_counter])):
@@ -147,22 +152,25 @@ class Parse:
                 else:
                     parsed_token_list = number_as_list
 
+            if Parse.Parsing_a_word:
+                parsed_token_list.extend(self.split_url_pattern.findall(text))
+
             if len(parsed_token_list) > 0:
 
                 if self.stemmer:
                     parsed_token_list_stemmer = []
                     for word in parsed_token_list:
                         if word.isalpha():
-                            parsed_token_list_stemmer.append(self.porter_stemmer.stem(word))
+                            parsed_token_list_stemmer.append(self.snow_stemmer.stem(word))
                         else:
                             parsed_token_list_stemmer.append(word)
                     parsed_token_list = parsed_token_list_stemmer
 
                 for term in parsed_token_list:
                     if term not in self.location_dict:
-                        self.location_dict[term] = [(i, i + len(term))]
+                        self.location_dict[term] = [i]
                     else:
-                        self.location_dict[term].append((i, i + len(term)))
+                        self.location_dict[term].append(i)
 
                     if term not in term_dict:
                         term_dict[term] = 1
@@ -176,12 +184,12 @@ class Parse:
                 if "//t" not in token and token not in self.dict_punctuation:
                     token = token.lower()
                     if self.stemmer:
-                        token = self.porter_stemmer.stem(token)
+                        token = self.snow_stemmer.stem(token)
 
                     if token not in self.location_dict:
-                        self.location_dict[token] = [(i, i + len(token))]
+                        self.location_dict[token] = [i]
                     else:
-                        self.location_dict[token].append((i, i + len(token)))
+                        self.location_dict[token].append(i)
 
                     if token not in term_dict:
                         term_dict[token] = 1
@@ -191,6 +199,24 @@ class Parse:
                         self.max_freq_term = term_dict[token]
 
         return term_dict
+
+    def parse_query(self, query):
+        """
+        This function takes a query as a string and break it into different fields
+        :param query: string representation of the query
+        :return: query object with corresponding fields.
+        """
+        Parse.Parsing_a_word = True
+        query_dict = self.parse_sentence(query)
+        location_dict = self.location_dict
+        max_freq = self.max_freq_term
+        query_length = len(query_dict)
+        query = query(query_dict, query_length, max_freq, location_dict)
+        self.max_freq_term = 0
+        self.term_dict = {}
+        self.location_dict = {}
+
+        return query
 
     def parse_doc(self, doc_as_list):
         """
@@ -230,6 +256,11 @@ class Parse:
 
         for term in broken_urls:
             if "http" not in term:
+                if term.isalpha():
+                    if term[0].isupper():
+                        term = term.upper()
+                    else:
+                        term = term.lower()
                 if term not in self.term_dict:
                     self.term_dict[term] = 1
                 else:
@@ -249,7 +280,7 @@ class Parse:
         #         term_dict[term] = 1
         #     else:
         #         term_dict[term] += 1
-
+        Parse.idx += 1
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, self.location_dict, doc_length, self.max_freq_term)
 
@@ -357,6 +388,7 @@ class Parse:
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
+
         """
         :param number_as_str: example -->  a number to split
         :param word_before: example --> can be a sign
@@ -364,7 +396,8 @@ class Parse:
         :return: list of a parsed phrase split by set of rules
         """
         str_no_commas = self.str_no_commas_pattern.sub("", number_as_str)
-        signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%', 'percentage': '%',
+        signs = {'usd': '$', 'aud': '$', 'eur': '€', '$': '$', '€': '€', '£': '£', 'percent': '%',
+                 'percentage': '%',
                  '%': '%'}
         quantities = {"thousands", "thousand", "millions", "million", "billions", "billion"}
         quantity = ""
@@ -386,14 +419,16 @@ class Parse:
             amount_of_sleshes = str_no_commas.count("/")
             division_as_is = str_no_commas
             if amount_of_sleshes > 1:
-                    return [str_no_commas]
+                return [str_no_commas]
             is_division = True
             num, denum = str_no_commas.split('/')
+            if denum == "0":
+                return [str_no_commas]
             as_number = float(num) / float(denum)
         elif "." in str_no_commas:
             amount_of_dots = str_no_commas.count(".")
             if amount_of_dots > 1:
-                    return [str_no_commas]
+                return [str_no_commas]
             as_number = float("{:.3f}".format(float(str_no_commas)))
         else:
             as_number = int(str_no_commas)
@@ -461,6 +496,10 @@ class Parse:
         if returnlist[1] != "":
             return returnlist
         return [ret]
+
+
+
+
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         """
