@@ -1,3 +1,5 @@
+from Spell_Correction import spell
+import datetime
 
 class Ranker:
 
@@ -25,3 +27,14 @@ class Ranker:
         :return: list of relevant document
         """
         return sorted_relevant_doc[:k]
+
+    def rank_of_date(self, tweet_date):
+
+        current_time = datetime.now()
+
+        tweet_date_as_a_DATE = datetime.strptime(tweet_date, '%a %b %d %H:%M:%S +0000 %Y')
+        date_sub = current_time - tweet_date_as_a_DATE
+
+        return date_sub
+
+
