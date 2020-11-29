@@ -17,8 +17,6 @@ class ReadFile:
         df = pd.read_parquet(full_path, engine="pyarrow")
         return df.values.tolist()
 
-    ####################################################################
-
     def read_corpus(self):
         corpus_list = [os.path.join(d, x)
                        for d, dirs, files in os.walk(self.corpus_path)

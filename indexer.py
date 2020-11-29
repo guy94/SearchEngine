@@ -38,9 +38,6 @@ class Indexer:
         :param document: a document need to be indexed.
         :return: -
         """
-        # term1 = [('1280915320774033410', 1), ('1280915357792759808', 1), ('1280915404081246215', 1), ('1280915431843340288', 1)]
-        # term2 = [('1280915485517729792', 1), ('1280915531374063617', 1), ('1280915682113261568', 1)]
-        # term_merge = self.merge(term1, term2)
 
         document_dictionary = document.term_doc_dictionary
         indices_dict = document.location_dict
@@ -91,10 +88,13 @@ class Indexer:
         sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
         Indexer.PICKLE_COUNTER += 1
 
-        pickle_out = open("postings\\posting_{}".format(Indexer.PICKLE_COUNTER), "ab")
+        file_name = "postings\\posting_{}".format(Indexer.PICKLE_COUNTER)
+        pickle_out = open(file_name, "ab")
         for key, value in sorted_keys_dict.items():
             pickle.dump([key, value], pickle_out)
         pickle_out.close()
+
+        self.postings_files_names.append(file_name)
 
         #####################
         # self.counter += len(sorted_keys_dict)
@@ -128,9 +128,9 @@ class Indexer:
 
 
     def merge_files(self):
-        self.postings_files_names = sorted([os.path.join(d, x)
-                                     for d, dirs, files in os.walk("postings")
-                                     for x in files])
+        # self.postings_files_names = sorted([os.path.join(d, x)
+        #                              for d, dirs, files in os.walk("postings")
+        #                              for x in files])
 
         for i, posting in enumerate(self.postings_files_names):
             part_of_posting = self.read_part_of_posting(posting, i)

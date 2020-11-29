@@ -25,17 +25,17 @@ def run_engine():
     start = time.time()
     Parse.stemmer = False
 
-    # documents_list = r.read_file(file_name=corpus_list[1])
-    # for i in range(len(documents_list)):
-    #     print(str(number_of_documents))
-    #     parsed_document = p.parse_doc(documents_list[i])
-    #     if(i == len(documents_list) - 1):
-    #         indexer.is_last_doc = True
-    #     indexer.add_new_doc(parsed_document)
-    #     # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-    #     number_of_documents += 1
-    #
-    # indexer.merge_files()
+    documents_list = r.read_file(file_name=corpus_list[1])
+    for i in range(len(documents_list)):
+        print(str(number_of_documents))
+        parsed_document = p.parse_doc(documents_list[i])
+        if(i == len(documents_list) - 1):
+            indexer.is_last_doc = True
+        indexer.add_new_doc(parsed_document)
+        # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+        number_of_documents += 1
+
+    indexer.merge_files()
 
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
@@ -91,6 +91,9 @@ def main():
     run_engine()
     query = input("Please enter a query: ")
     k = int(input("Please enter number of docs to retrieve: "))
+    start = time.time()
     inverted_index, number_of_documents = load_index()
     for doc_tuple in search_and_rank_query(query, inverted_index, k, number_of_documents):
-        print('tweet id: {}, score (unique common words with query): {}'.format(doc_tuple[0], doc_tuple[1]))
+        print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
+    end = time.time()
+    print(end - start)

@@ -25,7 +25,7 @@ class Parse:
         self.max_freq_term = 0
         self.term_dict = {}
         self.stop_words = stopwords.words('english')
-        self.our_stop_words = ["RT", "http", "https"]
+        self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…']
         self.stop_words.extend(self.our_stop_words)
         self.stop_words_dict = dict.fromkeys(self.stop_words)
         self.tokens = None
@@ -57,9 +57,9 @@ class Parse:
         """
 
         # TODO: how to split the urls and what is need to do different
-        extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
+        # extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
-        text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict and w not in extra_puncts]
+        text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict]
         self.tokens = text_tokens_without_stopwords
 
 
