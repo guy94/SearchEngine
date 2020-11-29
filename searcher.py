@@ -116,7 +116,7 @@ class Searcher:
                     dfi = self.inverted_index[term.lower()][0]
 
                 idf = math.log(self.number_of_documents / dfi, 10)
-                tf_idf = idf * doc_tuple[4]
+                tf_idf = idf * doc_tuple[2]
 
                 self.docs_dict[doc_tuple[0]][idx] = tf_idf
                 tf_idf_list = [0] * query.query_length

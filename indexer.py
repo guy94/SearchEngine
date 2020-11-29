@@ -65,12 +65,21 @@ class Indexer:
 
                 if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                               list_of_indices, term_freq / document.doc_length, document.tweet_date)]
+                                               list_of_indices)]
 
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                    list_of_indices, term_freq / document.doc_length, document.tweet_date))
+                                    list_of_indices))
+
+                if document.tweet_id not in self.docs_dict:
+                    tweet_date = document.tweet_date
+                    date_in_hours = self.date_diff(tweet_date)
+
+                    self.docs_dict[document.tweet_id] = [document.doc_length, date_in_hours]
+
+
+
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     self.dump_from_indexer_to_disk()
@@ -104,6 +113,15 @@ class Indexer:
         #####################
         # self.counter += len(sorted_keys_dict)
         # print("posting_{} len is: {}".format(Indexer.PICKLE_COUNTER, len(sorted_keys_dict)))
+
+    def date_diff(self, tweet_date):
+
+        current_time = datetime.now()
+
+        tweet_date_as_a_DATE = datetime.strptime(tweet_date, '%a %b %d %H:%M:%S +0000 %Y')
+        date_sub = current_time - tweet_date_as_a_DATE
+
+        return date_sub
 
     def remove_capital_entity(self, key, merge_dict):
 
