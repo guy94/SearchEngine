@@ -3,6 +3,7 @@ import json
 from indexer import Indexer
 from parser_module import Parse
 from ranker import Ranker
+from spellchecker import SpellChecker
 import utils
 try:
     import _pickle as pickle
@@ -10,6 +11,7 @@ except:
     import pickle
 import math
 from query import query_object
+spell = SpellChecker()
 
 class Searcher:
 
@@ -42,7 +44,34 @@ class Searcher:
             elif term.lower() in self.inverted_index:
                 posting_file_to_load = self.inverted_index[term.lower()][1]
             else:
-                continue
+                misspelled_checker = spell.unknown([term])
+                if len(misspelled_checker) != 0:
+                    candidates = list(spell.edit_distance_1(term))
+                    candidates.extend(list(spell.edit_distance_2(term)))
+                    max_freq_in_curpos = 0
+                    max_freq_name = ''
+
+                    for i, candidate in enumerate(candidates):
+                        if candidate in self.inverted_index :
+                            curr_freq = self.inverted_index[candidate][0]
+                            if curr_freq > max_freq_in_curpos:
+                                max_freq_in_curpos = curr_freq
+                                max_freq_name = candidate
+                        elif candidate.upper() in self.inverted_index:
+                            curr_freq = self.inverted_index[candidate.upper()][0]
+                            if curr_freq > max_freq_in_curpos:
+                                max_freq_in_curpos = curr_freq
+                                max_freq_name = candidate
+
+                    if max_freq_name != '':
+                        posting_file_to_load = self.inverted_index[max_freq_name][1]
+                    else:
+                        continue
+                else:
+                    continue
+
+
+
 
             if posting_file_to_load != self.current_file_name:
                 self.current_file_name = posting_file_to_load
