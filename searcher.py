@@ -1,8 +1,8 @@
 import json
-
 from indexer import Indexer
 from parser_module import Parse
 from ranker import Ranker
+from spellchecker import SpellChecker
 import utils
 try:
     import _pickle as pickle
@@ -72,14 +72,16 @@ class Searcher:
                 if doc_tuple[0] not in self.docs_dict:
                     self.docs_dict[doc_tuple[0]] = tf_idf_list
 
-                dfi = self.inverted_index[term][0]
+                try:
+                    dfi = self.inverted_index[term][0]
+                except:
+                    dfi = self.inverted_index[term.lower()][0]
 
                 idf = math.log(self.number_of_documents / dfi, 10)
-                tf_idf = idf * doc_tuple[2]
+                tf_idf = idf * doc_tuple[4]
 
                 self.docs_dict[doc_tuple[0]][idx] = tf_idf
                 tf_idf_list = [0] * query.query_length
-            print(dfi)
 
     def normalized_query(self, query):
         normalized = []

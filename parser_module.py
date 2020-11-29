@@ -257,10 +257,6 @@ class Parse:
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
 
-        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        tokenized_text = self.parse_sentence(concatenated_text)
-
-
         ########################################
         # TODO: check if indices needed
         # indices_as_list = self.indices_as_list(indices)
@@ -287,7 +283,8 @@ class Parse:
                 if self.term_dict[term] > self.max_freq_term:
                     self.max_freq_term = self.term_dict[term]
 
-        term_dict = self.parse_sentence(tokenized_text)
+        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
+        term_dict = self.parse_sentence(concatenated_text)
 
         doc_length = len(self.tokens)  # after text operations.
         Parse.idx += 1

@@ -1,12 +1,13 @@
-# from Spell_Correction import spell
 import datetime
 from numpy import dot
 from numpy.linalg import norm
+
 
 class Ranker:
 
     def __init__(self):
         pass
+
     @staticmethod
     def rank_relevant_doc(relevant_docs, normalized_query):
         """
@@ -18,11 +19,11 @@ class Ranker:
         ranked_docs_dict = {}
 
         for doc in relevant_docs:
-            cos_sim = dot(relevant_docs[doc], normalized_query) / (norm(relevant_docs[doc])*norm(normalized_query))
+            cos_sim = dot(relevant_docs[doc], normalized_query) / (norm(relevant_docs[doc]) * norm(normalized_query))
             ranked_docs_dict[doc] = cos_sim
 
-        # sorted_ranked_docs_dict = {k: ranked_docs_dict[k] for k in sorted(ranked_docs_dict)}
-        sorted_ranked_docs_dict = {k: v for k, v in sorted(ranked_docs_dict.items(), key=lambda item: item[1], reverse=True)}
+        sorted_ranked_docs_dict = {k: v for k, v in
+                                   sorted(ranked_docs_dict.items(), key=lambda item: item[1], reverse=True)}
 
         return sorted_ranked_docs_dict
 
@@ -52,5 +53,3 @@ class Ranker:
         date_sub = current_time - tweet_date_as_a_DATE
 
         return date_sub
-
-

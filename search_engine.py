@@ -4,6 +4,7 @@ from parser_module import Parse
 from indexer import Indexer
 from searcher import Searcher
 import time
+from tqdm import tqdm
 
 try:
     import _pickle as pickle
@@ -24,18 +25,16 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    start = time.time()
-    documents_list = r.read_file(file_name=corpus_list[1])
-    for i in range(len(documents_list)):
-        print(str(number_of_documents))
-        parsed_document = p.parse_doc(documents_list[i])
-        if (i == len(documents_list) - 1):
-            indexer.is_last_doc = True
-        indexer.add_new_doc(parsed_document)
-        # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-        number_of_documents += 1
-
-    indexer.merge_files()
+    # documents_list = r.read_file(file_name=corpus_list[1])
+    # for i in tqdm(range(len(documents_list))):
+    #     parsed_document = p.parse_doc(documents_list[i])
+    #     if (i == len(documents_list) - 1):
+    #         indexer.is_last_doc = True
+    #     indexer.add_new_doc(parsed_document)
+    #     # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+    #     number_of_documents += 1
+    #
+    # indexer.merge_files()
 
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
@@ -56,15 +55,13 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
     #     # index the document data
     #     indexer.add_new_doc(parsed_document)
 
-    end = time.time()
-    print(end - start)
     print('Finished parsing and indexing. Starting to export files')
     print("number of docs: {}".format(number_of_documents))
 
-    pickle_out = open("inverted_index", "wb")
-    pickle.dump(indexer.inverted_idx, pickle_out)
-    pickle.dump(number_of_documents, pickle_out)
-    pickle_out.close()
+    # pickle_out = open("inverted_index", "wb")
+    # pickle.dump(indexer.inverted_idx, pickle_out)
+    # pickle.dump(number_of_documents, pickle_out)
+    # pickle_out.close()
 
 
 def load_index():
@@ -87,16 +84,17 @@ def search_and_rank_query(query, inverted_index, k, number_of_documents):
 
 def read_queries_file(queries):
     queries_list = []
-    file_in = open(queries, "r")
+    file_in = open(queries, encoding="utf8")
 
-    with open(queries) as file_in:
-        while True:
-            try:
-                query = file_in.readline()
-                if query != '\n':
-                    queries_list.append(query[2:])
-            except:
-                break
+    while True:
+        try:
+            query = file_in.readline()
+            if query != '\n':
+                query = query.split(".", 1)[1]
+                query = query.split("\n", 1)[0]
+                queries_list.append(query)
+        except:
+            break
     file_in.close()
     return queries_list
 
@@ -106,6 +104,7 @@ def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     # query = input("Please enter a query: ")
     # k = int(input("Please enter number of docs to retrieve: "))
     inverted_index, number_of_documents = load_index()
+
     queries_as_list = []
     if type(queries) is list:
         queries_as_list = queries
@@ -114,7 +113,7 @@ def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
 
     for query in queries_as_list:
         start = time.time()
-        for doc_tuple in search_and_rank_query(query, inverted_index, k, number_of_documents):
+        for doc_tuple in search_and_rank_query(query, inverted_index, num_docs_to_retrieve, number_of_documents):
             print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
         end = time.time()
         print("query process time:".format(end - start))

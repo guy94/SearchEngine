@@ -66,12 +66,12 @@ class Indexer:
 
                 if term not in self.postingDict :
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                               list_of_indices, term_freq)] #TODO: add len(DOC)
+                                               list_of_indices, term_freq / document.doc_length, document.tweet_date)]
 
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                    list_of_indices, term_freq))
+                                    list_of_indices, term_freq / document.doc_length, document.tweet_date))
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     self.dump_from_indexer_to_disk()
