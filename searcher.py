@@ -4,7 +4,10 @@ from indexer import Indexer
 from parser_module import Parse
 from ranker import Ranker
 import utils
-import _pickle as pickle
+try:
+    import _pickle as pickle
+except:
+    import pickle
 import math
 from query import query_object
 

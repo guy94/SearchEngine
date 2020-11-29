@@ -64,11 +64,9 @@ class Parse:
         """
 
         # TODO: how to split the urls and what is need to do different
-        # extra_puncts = [r"", r"'", r"''", r'"', '``', '’', r'', r""]
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict]
         self.tokens = text_tokens_without_stopwords
-
 
         last_number_parsed = None
         count_num_in_a_row = 0
@@ -175,8 +173,6 @@ class Parse:
                 else:
                     parsed_token_list = number_as_list
 
-
-
             if len(parsed_token_list) > 0:
 
                 if self.stemmer:
@@ -262,7 +258,7 @@ class Parse:
         retweet_quoted_indices = doc_as_list[13]
 
         concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        #tokenized_text = self.parse_sentence(concatenated_text)
+        tokenized_text = self.parse_sentence(concatenated_text)
 
 
         ########################################
@@ -291,17 +287,9 @@ class Parse:
                 if self.term_dict[term] > self.max_freq_term:
                     self.max_freq_term = self.term_dict[term]
 
-        term_dict = self.parse_sentence(full_text)
-        #
-        # for key in term_dict:
-        #     location_dict[key]
+        term_dict = self.parse_sentence(tokenized_text)
 
         doc_length = len(self.tokens)  # after text operations.
-        # for term in tokenized_text:
-        #     if term not in term_dict.keys():
-        #         term_dict[term] = 1
-        #     else:
-        #         term_dict[term] += 1
         Parse.idx += 1
         document = Document(tweet_id, tweet_date, full_text, urls, retweet_text, retweet_urls, quoted_text,
                             quote_urls, term_dict, self.location_dict, doc_length, self.max_freq_term)
@@ -309,11 +297,6 @@ class Parse:
         self.max_freq_term = 0
         self.term_dict = {}
         self.location_dict = {}
-        # print("full text" + concatenated_text)
-        # print("--------------------")
-        # print("urls" + str(broken_urls))
-        # print("term_dict: " + str(term_dict))
-        # print("--------------------")
         return document
 
     def parse_date(self, token):
@@ -518,10 +501,6 @@ class Parse:
         if returnlist[1] != "":
             return returnlist
         return [ret]
-
-
-
-
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
         """

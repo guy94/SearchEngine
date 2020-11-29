@@ -3,33 +3,33 @@ from configuration import ConfigClass
 from parser_module import Parse
 from indexer import Indexer
 from searcher import Searcher
-import utils
 import time
-import _pickle as pickle
-from query import query_object
+
+try:
+    import _pickle as pickle
+except:
+    import pickle
 
 
-def run_engine():
+def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     """
     :return:
     """
+    config = ConfigClass(corpus_path, output_path, stemming)
     number_of_documents = 0
-
-    config = ConfigClass()
     r = ReadFile(corpus_path=config.get__corpusPath())
     p = Parse()
     indexer = Indexer(config)
-
+    Parse.stemmer = stemming
 
     corpus_list = r.read_corpus()
-    start = time.time()
-    Parse.stemmer = False
 
+    start = time.time()
     documents_list = r.read_file(file_name=corpus_list[1])
     for i in range(len(documents_list)):
         print(str(number_of_documents))
         parsed_document = p.parse_doc(documents_list[i])
-        if(i == len(documents_list) - 1):
+        if (i == len(documents_list) - 1):
             indexer.is_last_doc = True
         indexer.add_new_doc(parsed_document)
         # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
@@ -46,7 +46,6 @@ def run_engine():
     #         break
     ##################
 
-
     # Iterate over every document in the file
     # for idx, document in enumerate(documents_list):
     #     # parse the document
@@ -62,11 +61,10 @@ def run_engine():
     print('Finished parsing and indexing. Starting to export files')
     print("number of docs: {}".format(number_of_documents))
 
-
-    # pickle_out = open("inverted_index", "wb")
-    # pickle.dump(indexer.inverted_idx, pickle_out)
-    # pickle.dump(number_of_documents, pickle_out)
-    # pickle_out.close()
+    pickle_out = open("inverted_index", "wb")
+    pickle.dump(indexer.inverted_idx, pickle_out)
+    pickle.dump(number_of_documents, pickle_out)
+    pickle_out.close()
 
 
 def load_index():
@@ -87,13 +85,36 @@ def search_and_rank_query(query, inverted_index, k, number_of_documents):
     return searcher.ranker.retrieve_top_k(ranked_docs, k)
 
 
-def main():
-    run_engine()
-    query = input("Please enter a query: ")
-    k = int(input("Please enter number of docs to retrieve: "))
-    start = time.time()
+def read_queries_file(queries):
+    queries_list = []
+    file_in = open(queries, "r")
+
+    with open(queries) as file_in:
+        while True:
+            try:
+                query = file_in.readline()
+                if query != '\n':
+                    queries_list.append(query[2:])
+            except:
+                break
+    file_in.close()
+    return queries_list
+
+
+def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
+    run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve)
+    # query = input("Please enter a query: ")
+    # k = int(input("Please enter number of docs to retrieve: "))
     inverted_index, number_of_documents = load_index()
-    for doc_tuple in search_and_rank_query(query, inverted_index, k, number_of_documents):
-        print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
-    end = time.time()
-    print(end - start)
+    queries_as_list = []
+    if type(queries) is list:
+        queries_as_list = queries
+    else:
+        queries_as_list = read_queries_file(queries)
+
+    for query in queries_as_list:
+        start = time.time()
+        for doc_tuple in search_and_rank_query(query, inverted_index, k, number_of_documents):
+            print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
+        end = time.time()
+        print("query process time:".format(end - start))

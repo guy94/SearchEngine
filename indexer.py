@@ -3,7 +3,10 @@ import json
 import os
 import time
 from parser_module import Parse
-import _pickle as pickle
+try:
+    import _pickle as pickle
+except:
+    import pickle
 import bisect
 from concurrent.futures import ThreadPoolExecutor
 
@@ -27,9 +30,12 @@ class Indexer:
         self.first_read = True
         self.postings_files_names = []
         self.is_last_doc = False
-
-
         self.counter = 0
+
+        if config.toStem:
+            self.dump_path = config.saveFilesWithStem
+        else:
+            self.dump_path = config.saveFilesWithoutStem
 
     def add_new_doc(self, document):
         """
@@ -60,12 +66,12 @@ class Indexer:
 
                 if term not in self.postingDict :
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                               list_of_indices)] #TODO: add len(DOC)
+                                               list_of_indices, term_freq)] #TODO: add len(DOC)
 
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                    list_of_indices))
+                                    list_of_indices, term_freq))
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     self.dump_from_indexer_to_disk()
@@ -88,7 +94,7 @@ class Indexer:
         sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
         Indexer.PICKLE_COUNTER += 1
 
-        file_name = "postings\\posting_{}".format(Indexer.PICKLE_COUNTER)
+        file_name = self.dump_path + "\\posting_{}".format(Indexer.PICKLE_COUNTER)
         pickle_out = open(file_name, "ab")
         for key, value in sorted_keys_dict.items():
             pickle.dump([key, value], pickle_out)
@@ -258,7 +264,7 @@ class Indexer:
 
     def read_part_of_posting(self, posting, num_of_file, last_file=False):
         """gets a posting NAME and it's index!! and reads it's content from the disk
-           store the file descriptor fo current posting file"""
+           store the file descriptor of current posting file"""
         num_of_file += 1  # this gives values of 1..* to file names, skipping 0
         pickle_in = open("{}".format(posting), "rb")
         if num_of_file in self.file_descriptor_dict:
@@ -305,7 +311,6 @@ class Indexer:
 
         merge_count = 0
 
-
         if len(self.files_to_merge) == 1:
             for k in self.files_to_merge[0]:
                 merged_dict[k[0]] = k[1]
@@ -328,7 +333,7 @@ class Indexer:
                         posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file], num_of_file)
 
                         if not posting_to_insert:
-                            self.swap_lists(index_list, file_name_index_list, merged_dict, j)
+                            self.swap_lists(index_list, file_name_index_list, j)
 
                             if len(file_name_index_list) == 1:
                                 num_of_file = file_name_index_list[0]
@@ -366,7 +371,7 @@ class Indexer:
 
                             if not posting_to_insert:
 
-                                self.swap_lists(index_list, file_name_index_list, merged_dict, j)
+                                self.swap_lists(index_list, file_name_index_list, j)
                                 if len(file_name_index_list) == 1:
                                     num_of_file = file_name_index_list[0]
                                     last_posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file],
@@ -406,7 +411,7 @@ class Indexer:
                     posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file], num_of_file)
 
                     if not posting_to_insert:
-                        self.swap_lists(index_list, file_name_index_list, merged_dict, 0)
+                        self.swap_lists(index_list, file_name_index_list, 0)
 
                         if len(file_name_index_list) == 1:
                             num_of_file = file_name_index_list[0]
@@ -428,11 +433,7 @@ class Indexer:
                     self.final_postings_dump_func(merged_dict)
                     merged_dict = {}
 
-
-    def swap_lists(self, index_list, file_name_index_list, merged_dict, index):
-        # if len(self.files_to_merge) == 2:
-        #     print("total terms after merge: {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
-        #     print("merged dict len: {}".format(len(merged_dict)))
+    def swap_lists(self, index_list, file_name_index_list, index):
         file_name_index_list[index] = file_name_index_list[-1]
         file_name_index_list.pop()
         self.files_to_merge[index] = self.files_to_merge[-1]
@@ -440,16 +441,10 @@ class Indexer:
         index_list[index] = index_list[-1]
         index_list.pop()
 
-
-        # if len(file_name_index_list) == 1:
-        #     for k in range(index_list[0], len(self.files_to_merge[0])):
-        #         merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
-        #     self.final_postings_dump_func(merged_dict)
-
     def final_postings_dump_func(self, merged_dict):
 
         Indexer.FINAL_POSTINGS_COUNTER += 1
-        file_name = "finalPostings\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
+        file_name = self.dump_path + "\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
         pickle_out = open(file_name, "wb")
         pickle.dump(merged_dict, pickle_out)
         num_of_pops = 0
@@ -458,14 +453,6 @@ class Indexer:
             self.inverted_idx[key][1] = file_name
             if key in Parse.entity_dict_global or key in Parse.capital_letter_dict_global:
                 self.remove_capital_entity(key, merged_dict)
-                # if key in self.inverted_idxmerged_dict[key]:
-                #     self.inverted_idx[key][1] = file_name
-                #     # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
-                # else:
-                #     num_of_pops += 1
-            # else:
-            #     self.inverted_idx[key][1] = file_name
-                # pickle.dump("\"{}\": \"{}\"".format(key, value), pickle_out)
 
         pickle.dump(merged_dict, pickle_out)
         pickle_out.close()
