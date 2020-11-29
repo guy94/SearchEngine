@@ -49,7 +49,6 @@ class Parse:
 
         self.url_pattern_query = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 
-
         self.split_url_pattern = re.compile(r"[\w'|.|-]+")
 
         self.emojis_pattern = re.compile(pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
@@ -256,6 +255,9 @@ class Parse:
         retweet_quoted_text = doc_as_list[11]
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
+
+        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
+        # tokenized_text = self.parse_sentence()
 
         ########################################
         # TODO: check if indices needed

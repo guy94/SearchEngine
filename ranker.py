@@ -1,4 +1,6 @@
 import datetime
+import time
+
 from numpy import dot
 from numpy.linalg import norm
 
@@ -18,6 +20,8 @@ class Ranker:
         """
         ranked_docs_dict = {}
 
+        start = time.time()
+
         for doc in relevant_docs:
             cos_sim = dot(relevant_docs[doc], normalized_query) / (norm(relevant_docs[doc]) * norm(normalized_query))
             ranked_docs_dict[doc] = cos_sim
@@ -25,6 +29,8 @@ class Ranker:
         sorted_ranked_docs_dict = {k: v for k, v in
                                    sorted(ranked_docs_dict.items(), key=lambda item: item[1], reverse=True)}
 
+        end = time.time()
+        print(end - start)
         return sorted_ranked_docs_dict
 
     @staticmethod

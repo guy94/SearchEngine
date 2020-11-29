@@ -1,4 +1,6 @@
 import json
+import time
+
 from indexer import Indexer
 from parser_module import Parse
 from ranker import Ranker
@@ -10,6 +12,7 @@ except:
     import pickle
 import math
 from query import query_object
+spell = SpellChecker()
 
 class Searcher:
 
@@ -34,13 +37,18 @@ class Searcher:
         :param query: query
         :return: dictionary of relevant documents.
         """
+
         query_dict = query.query_dict
+        query_dict = self.spell_correction(query_dict)
+
         self.sorted_query_dict = {k: query_dict[k] for k in sorted(query_dict)}
         for term in self.sorted_query_dict:
             if term in self.inverted_index:
                 posting_file_to_load = self.inverted_index[term][1]
             elif term.lower() in self.inverted_index:
                 posting_file_to_load = self.inverted_index[term.lower()][1]
+            elif term.upper() in self.inverted_index:
+                posting_file_to_load = self.inverted_index[term.upper()][1]
             else:
                 continue
 
@@ -54,6 +62,36 @@ class Searcher:
         self.document_dict_init(self.term_posting_dict, query)
 
         return self.docs_dict
+
+    def spell_correction(self, query_dict):
+        for term in query_dict:
+
+            if term.lower() not in self.inverted_index and term.upper() not in self.inverted_index:
+                misspelled_checker = spell.unknown([term])
+
+                if len(misspelled_checker) != 0:
+                    candidates = list(spell.edit_distance_1(term))
+                    max_freq_in_corpus = 0
+                    max_freq_name = ''
+
+                    for i, candidate in enumerate(candidates):
+                        if candidate in self.inverted_index:
+                            curr_freq = self.inverted_index[candidate][0]
+                            if curr_freq > max_freq_in_corpus:
+                                max_freq_in_corpus = curr_freq
+                                max_freq_name = candidate
+
+                        elif candidate.upper() in self.inverted_index:
+                            curr_freq = self.inverted_index[candidate.upper()][0]
+                            if curr_freq > max_freq_in_corpus:
+                                max_freq_in_corpus = curr_freq
+                                max_freq_name = candidate
+
+                    if max_freq_name != '':
+                        query_dict[max_freq_name] = query_dict.pop(term)
+                    else:
+                        continue
+        return query_dict
 
     def read_posting(self, posting_name):
         pickle_in = open("{}".format(posting_name), "rb")

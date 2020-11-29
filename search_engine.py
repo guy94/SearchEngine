@@ -112,8 +112,6 @@ def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
         queries_as_list = read_queries_file(queries)
 
     for query in queries_as_list:
-        start = time.time()
         for doc_tuple in search_and_rank_query(query, inverted_index, num_docs_to_retrieve, number_of_documents):
+            x = 5
             print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
-        end = time.time()
-        print("query process time:".format(end - start))

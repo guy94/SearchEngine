@@ -8,7 +8,6 @@ try:
 except:
     import pickle
 import bisect
-from concurrent.futures import ThreadPoolExecutor
 
 
 class Indexer:
@@ -22,9 +21,9 @@ class Indexer:
         self.not_finished_capital = {}
         self.inverted_idx = {}
         self.postingDict = {}
+        self.docs_dict = {}
         self.config = config
         self.num_of_terms = 0
-        self.executor = ThreadPoolExecutor(8)
         self.files_to_merge = []
         self.file_descriptor_dict = {}
         self.first_read = True
@@ -64,7 +63,7 @@ class Indexer:
                     list_of_indices = []
                 term_freq = document_dictionary[term]
 
-                if term not in self.postingDict :
+                if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
                                                list_of_indices, term_freq / document.doc_length, document.tweet_date)]
 
