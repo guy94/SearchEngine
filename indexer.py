@@ -3,11 +3,13 @@ import json
 import os
 import time
 from parser_module import Parse
+
 try:
     import _pickle as pickle
 except:
     import pickle
 import bisect
+from datetime import datetime
 
 
 class Indexer:
@@ -52,7 +54,7 @@ class Indexer:
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
-                    self.inverted_idx[term] = [1, ""]
+                    self.inverted_idx[term] = [1, "", 0]
                     self.num_of_terms += 1
                 else:
                     self.inverted_idx[term][0] += 1
@@ -70,16 +72,13 @@ class Indexer:
                 else:
                     bisect.insort(self.postingDict[term],
                                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                    list_of_indices))
+                                   list_of_indices))
 
                 if document.tweet_id not in self.docs_dict:
                     tweet_date = document.tweet_date
                     date_in_hours = self.date_diff(tweet_date)
 
-                    self.docs_dict[document.tweet_id] = [document.doc_length, date_in_hours]
-
-
-
+                    self.docs_dict[document.tweet_id] = [document.doc_length, date_in_hours, max_freq_term]
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     self.dump_from_indexer_to_disk()
@@ -87,9 +86,8 @@ class Indexer:
                     self.num_of_terms = 0
                     self.postingDict = {}
 
-
             except:
-                print('problem with the following key {}'.format(term))
+                print("problem with term: {}".format(term))
 
         if self.is_last_doc:
             if len(self.postingDict) > 0:
@@ -121,7 +119,8 @@ class Indexer:
         tweet_date_as_a_DATE = datetime.strptime(tweet_date, '%a %b %d %H:%M:%S +0000 %Y')
         date_sub = current_time - tweet_date_as_a_DATE
 
-        return date_sub
+        date_in_minutes = int((date_sub.days * 60 * 24) + (date_sub.seconds // 3600))
+        return date_in_minutes
 
     def remove_capital_entity(self, key, merge_dict):
 
@@ -148,7 +147,6 @@ class Indexer:
             posting_dict_to_delete = self.not_finished_capital[key][1]
             self.inverted_idx[key.lower()] += count_docs_to_delete
             merge_dict[key.lower()].extend(posting_dict_to_delete)
-
 
     def merge_files(self):
         # self.postings_files_names = sorted([os.path.join(d, x)
@@ -347,15 +345,17 @@ class Indexer:
                     if idx == len(self.files_to_merge[j]):
                         # new read pickle!!
                         num_of_file = file_name_index_list[j]
-                        posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file], num_of_file)
+                        posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file],
+                                                                      num_of_file)
 
                         if not posting_to_insert:
                             self.swap_lists(index_list, file_name_index_list, j)
 
                             if len(file_name_index_list) == 1:
                                 num_of_file = file_name_index_list[0]
-                                last_posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file], num_of_file
-                                                                                   , last_file=True)
+                                last_posting_to_insert = self.read_part_of_posting(
+                                    self.postings_files_names[num_of_file], num_of_file
+                                    , last_file=True)
 
                                 self.files_to_merge[0].extend(last_posting_to_insert)
                                 for k in range(index_list[0], len(self.files_to_merge[0])):
@@ -384,15 +384,17 @@ class Indexer:
 
                         if index_list[j] == len(self.files_to_merge[j]):
                             num_of_file = file_name_index_list[j]
-                            posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file], num_of_file)
+                            posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file],
+                                                                          num_of_file)
 
                             if not posting_to_insert:
 
                                 self.swap_lists(index_list, file_name_index_list, j)
                                 if len(file_name_index_list) == 1:
                                     num_of_file = file_name_index_list[0]
-                                    last_posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file],
-                                                                                       num_of_file, last_file=True)
+                                    last_posting_to_insert = self.read_part_of_posting(
+                                        self.postings_files_names[num_of_file],
+                                        num_of_file, last_file=True)
 
                                     self.files_to_merge[0].extend(last_posting_to_insert)
                                     for k in range(index_list[0], len(self.files_to_merge[0])):
@@ -463,11 +465,11 @@ class Indexer:
         Indexer.FINAL_POSTINGS_COUNTER += 1
         file_name = self.dump_path + "\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
         pickle_out = open(file_name, "wb")
-        pickle.dump(merged_dict, pickle_out)
         num_of_pops = 0
 
         for key in list(merged_dict):
             self.inverted_idx[key][1] = file_name
+            self.inverted_idx[key][2] += len(merged_dict[key])
             if key in Parse.entity_dict_global or key in Parse.capital_letter_dict_global:
                 self.remove_capital_entity(key, merged_dict)
 

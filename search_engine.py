@@ -25,16 +25,16 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    documents_list = r.read_file(file_name=corpus_list[1])
-    for i in tqdm(range(20)):
-        parsed_document = p.parse_doc(documents_list[i])
-        if (i == 19):
-            indexer.is_last_doc = True
-        indexer.add_new_doc(parsed_document)
-        # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-        number_of_documents += 1
-
-    indexer.merge_files()
+    # documents_list = r.read_file(file_name=corpus_list[1])
+    # for i in tqdm(range(len(documents_list))):
+    #     parsed_document = p.parse_doc(documents_list[i])
+    #     if (i == len(documents_list) - 1):
+    #         indexer.is_last_doc = True
+    #     indexer.add_new_doc(parsed_document)
+    #     # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+    #     number_of_documents += 1
+    #
+    # indexer.merge_files()
 
     ##################
     # for doc in next(r.read_file(corpus_list[0])):
@@ -58,10 +58,11 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
     print('Finished parsing and indexing. Starting to export files')
     print("number of docs: {}".format(number_of_documents))
 
-    pickle_out = open("inverted_index", "wb")
-    pickle.dump(indexer.inverted_idx, pickle_out)
-    pickle.dump(number_of_documents, pickle_out)
-    pickle_out.close()
+    # pickle_out = open("inverted_index", "wb")
+    # pickle.dump(indexer.inverted_idx, pickle_out)
+    # pickle.dump(number_of_documents, pickle_out)
+    # pickle.dump(indexer.docs_dict, pickle_out) #TODO::USE THAT SHIT!!!!!!
+    # pickle_out.close()
 
 
 def load_index():
@@ -69,6 +70,7 @@ def load_index():
     pickle_in = open("inverted_index", "rb")
     inverted_index = pickle.load(pickle_in)
     number_of_docs = pickle.load(pickle_in)
+    tweet_id_dict = pickle.load(pickle_in)
     return inverted_index, number_of_docs
 
 
@@ -101,11 +103,10 @@ def read_queries_file(queries):
 
 def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve)
-    # query = input("Please enter a query: ")
-    # k = int(input("Please enter number of docs to retrieve: "))
     inverted_index, number_of_documents = load_index()
 
-    queries_as_list = []
+    #TODO: check min/max value for k. what if there is no query?
+
     if type(queries) is list:
         queries_as_list = queries
     else:

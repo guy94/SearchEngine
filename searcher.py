@@ -111,9 +111,9 @@ class Searcher:
                     self.docs_dict[doc_tuple[0]] = tf_idf_list
 
                 try:
-                    dfi = self.inverted_index[term][0]
+                    dfi = self.inverted_index[term][2]
                 except:
-                    dfi = self.inverted_index[term.lower()][0]
+                    dfi = self.inverted_index[term.lower()][2]
 
                 idf = math.log(self.number_of_documents / dfi, 10)
                 tf_idf = idf * doc_tuple[2]

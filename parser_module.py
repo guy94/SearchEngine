@@ -12,8 +12,6 @@ from nltk.stem.snowball import SnowballStemmer
 nlp = spacy.load("en_core_web_sm")
 
 
-
-
 class Parse:
     stemmer = False
     capital_letter_dict_global = {}
@@ -256,9 +254,6 @@ class Parse:
         retweet_quoted_urls = doc_as_list[12]
         retweet_quoted_indices = doc_as_list[13]
 
-        concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
-        # tokenized_text = self.parse_sentence()
-
         ########################################
         # TODO: check if indices needed
         # indices_as_list = self.indices_as_list(indices)
@@ -268,7 +263,6 @@ class Parse:
 
         raw_urls = self.parse_raw_url(urls, retweet_urls, quote_urls, retweet_quoted_urls, full_text)
         broken_urls = self.parse_url_text(raw_urls)
-
 
         for term in broken_urls:
             if "http" not in term:
@@ -387,7 +381,6 @@ class Parse:
                     url[i] = address[1]
                     url.insert(i, address[0])
             to_return.extend(url)
-
 
         return to_return
 
