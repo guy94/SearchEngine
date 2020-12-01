@@ -11,26 +11,26 @@ class Ranker:
         pass
 
     @staticmethod
-    def rank_relevant_doc(relevant_docs, normalized_query):
+    def rank_relevant_doc(relevant_docs, normalized_query, inverted_documents_dict):
         """
-        This function provides rank for each relevant document and sorts them by their scores.
+        This function provides rank for each relevant document and sorts them by their scores as a first attribute,
+        and their date in minutes as second attribute.
         The current score considers tfIdf and cosine similarity.
         :param relevant_doc: dictionary of documents that contains at least one term from the query.
+        :param normalized_query: query vector normalized by its max frequency term
+        :param inverted_documents_dict: dictionary of documents ids and the date of creation of each document
         :return: sorted list of documents by score
         """
         ranked_docs_dict = {}
-
-        start = time.time()
 
         for doc in relevant_docs:
             cos_sim = dot(relevant_docs[doc], normalized_query) / (norm(relevant_docs[doc]) * norm(normalized_query))
             ranked_docs_dict[doc] = cos_sim
 
         sorted_ranked_docs_dict = {k: v for k, v in
-                                   sorted(ranked_docs_dict.items(), key=lambda item: item[1], reverse=True)}
+                                   sorted(ranked_docs_dict.items(), key=lambda item: (item[1],
+                                                                  1 / inverted_documents_dict[item[0]][1]), reverse=True)}
 
-        end = time.time()
-        print(end - start)
         return sorted_ranked_docs_dict
 
     @staticmethod
@@ -50,12 +50,3 @@ class Ranker:
             else:
                 k_docs_to_retrieve.append((key, value))
         return k_docs_to_retrieve
-
-    # def rank_of_date(self, tweet_date):
-    #
-    #     current_time = datetime.now()
-    #
-    #     tweet_date_as_a_DATE = datetime.strptime(tweet_date, '%a %b %d %H:%M:%S +0000 %Y')
-    #     date_sub = current_time - tweet_date_as_a_DATE
-    #
-    #     return date_sub

@@ -14,7 +14,7 @@ from datetime import datetime
 
 class Indexer:
     PICKLE_COUNTER = 0
-    NUM_OF_TERMS_IN_POSTINGS = 100000
+    NUM_OF_TERMS_IN_POSTINGS = 200000
     FINAL_POSTINGS_COUNTER = 0
     TOTAL_TERMS_AFTER_MERGE = 0
 
@@ -32,6 +32,7 @@ class Indexer:
         self.postings_files_names = []
         self.is_last_doc = False
         self.counter = 0
+        self.spell_dict = {}
 
         if config.toStem:
             self.dump_path = config.saveFilesWithStem
@@ -51,13 +52,17 @@ class Indexer:
         max_freq_term = document.max_freq_term
         # Go over each term in the doc
         for term in document_dictionary:
+
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
                     self.inverted_idx[term] = [1, "", 0]
+                    self.spell_dict[term] = 1
                     self.num_of_terms += 1
+
                 else:
                     self.inverted_idx[term][0] += 1
+                    self.spell_dict[term] += 1
 
                 if term in indices_dict:
                     list_of_indices = indices_dict[term]
@@ -69,10 +74,15 @@ class Indexer:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
                                                list_of_indices)]
 
+                # else:
+                #     bisect.insort(self.postingDict[term],
+                #                   (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
+                #                    list_of_indices))
+
                 else:
-                    bisect.insort(self.postingDict[term],
-                                  (document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                   list_of_indices))
+                    self.postingDict[term].extend(
+                        [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
+                          list_of_indices)])
 
                 if document.tweet_id not in self.docs_dict:
                     tweet_date = document.tweet_date
@@ -124,12 +134,12 @@ class Indexer:
 
     def remove_capital_entity(self, key, merge_dict):
 
-        if key in Parse.entity_dict_global and Parse.entity_dict_global[key] < 2:
+        if key in Parse.ENTITY_DICT and Parse.ENTITY_DICT[key] < 2:
             if key in self.inverted_idx:
                 del self.inverted_idx[key]
                 del merge_dict[key]
 
-        if key in Parse.capital_letter_dict_global and Parse.capital_letter_dict_global[key] is False:
+        elif key in Parse.CAPITAL_LETTER_DICT and Parse.CAPITAL_LETTER_DICT[key] is False:
             if key in self.inverted_idx:
                 count_docs = self.inverted_idx[key]
                 posting_file = merge_dict[key]
@@ -375,7 +385,10 @@ class Indexer:
 
                         left = self.files_to_merge[j][idx][1]
                         right = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
-                        merge_func_result = self.merge(left, right)
+
+                        # merge_func_result = self.merge(left, right)
+                        left.extend(right)
+                        merge_func_result = left
 
                         merge_count += 1
 
@@ -470,7 +483,7 @@ class Indexer:
         for key in list(merged_dict):
             self.inverted_idx[key][1] = file_name
             self.inverted_idx[key][2] += len(merged_dict[key])
-            if key in Parse.entity_dict_global or key in Parse.capital_letter_dict_global:
+            if key in Parse.ENTITY_DICT or key in Parse.CAPITAL_LETTER_DICT:
                 self.remove_capital_entity(key, merged_dict)
 
         pickle.dump(merged_dict, pickle_out)

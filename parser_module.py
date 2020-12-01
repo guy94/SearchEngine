@@ -14,10 +14,11 @@ nlp = spacy.load("en_core_web_sm")
 
 class Parse:
     stemmer = False
-    capital_letter_dict_global = {}
+    CAPITAL_LETTER_DICT = {}
     idx = 0
-    entity_dict_global = {}
+    ENTITY_DICT = {}
     Parsing_a_word = False
+    AMOUNT_OF_NUMBERS_IN_CORPUS = 0
 
     def __init__(self):
         self.max_freq_term = 0
@@ -125,10 +126,10 @@ class Parse:
                 if entity_str != "":
                     parsed_token_list.append(token)
                     if not Parse.Parsing_a_word:
-                        if token not in Parse.capital_letter_dict_global.keys():
-                            Parse.entity_dict_global[token] = 1
+                        if token not in Parse.CAPITAL_LETTER_DICT.keys():
+                            Parse.ENTITY_DICT[token] = 1
                         else:
-                            Parse.entity_dict_global[token] += 1
+                            Parse.ENTITY_DICT[token] += 1
 
                 count_num_in_a_row = 0
 
@@ -333,14 +334,14 @@ class Parse:
         rest_of_token = ent[1:].upper()
         ent = ent[0] + rest_of_token
         if ent.isupper():
-            if ent not in Parse.capital_letter_dict_global:
-                Parse.capital_letter_dict_global[ent] = True
+            if ent not in Parse.CAPITAL_LETTER_DICT:
+                Parse.CAPITAL_LETTER_DICT[ent] = True
             return ent
 
         else:
             new_word = ent.upper()  # title
-            if new_word in Parse.capital_letter_dict_global:
-                Parse.capital_letter_dict_global[new_word] = False
+            if new_word in Parse.CAPITAL_LETTER_DICT:
+                Parse.CAPITAL_LETTER_DICT[new_word] = False
 
             lower = ent.lower()
             return lower
@@ -491,7 +492,9 @@ class Parse:
         returnlist = [ret, division_as_is]
 
         if returnlist[1] != "":
+            Parse.AMOUNT_OF_NUMBERS_IN_CORPUS += 2
             return returnlist
+        Parse.AMOUNT_OF_NUMBERS_IN_CORPUS += 1
         return [ret]
 
     def parse_raw_url(self, url, retweet_url, quote_url, retweet_quoted_urls, full_text):
