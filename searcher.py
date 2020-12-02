@@ -64,6 +64,8 @@ class Searcher:
                 self.current_file_name = posting_file_to_load
                 self.current_posting = self.read_posting(posting_file_to_load)
 
+            if self.current_posting is None:
+                print()
             if term in self.current_posting:
                 self.term_posting_dict[term] = self.current_posting[term]
 

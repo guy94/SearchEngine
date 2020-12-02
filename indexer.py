@@ -1,8 +1,8 @@
-import concurrent
 import json
 import os
 import time
 from parser_module import Parse
+import gc
 
 try:
     import _pickle as pickle
@@ -31,8 +31,9 @@ class Indexer:
         self.first_read = True
         self.postings_files_names = []
         self.is_last_doc = False
-        self.counter = 0
+        self.values_size = 0
         self.spell_dict = {}
+        self.amount_of_postings_in_ram = 0
 
         if config.toStem:
             self.dump_path = config.saveFilesWithStem
@@ -73,6 +74,7 @@ class Indexer:
                 if term not in self.postingDict:
                     self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
                                                list_of_indices)]
+                    self.values_size += 1
 
                 # else:
                 #     bisect.insort(self.postingDict[term],
@@ -83,6 +85,7 @@ class Indexer:
                     self.postingDict[term].extend(
                         [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
                           list_of_indices)])
+                    self.values_size += 1
 
                 if document.tweet_id not in self.docs_dict:
                     tweet_date = document.tweet_date
@@ -91,8 +94,10 @@ class Indexer:
                     self.docs_dict[document.tweet_id] = [document.doc_length, date_in_hours, max_freq_term]
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
+                    print(self.values_size)
                     self.dump_from_indexer_to_disk()
 
+                    self.values_size = 0
                     self.num_of_terms = 0
                     self.postingDict = {}
 
@@ -105,6 +110,7 @@ class Indexer:
 
                 self.num_of_terms = 0
                 self.postingDict = {}
+                self.values_size = 0
 
     def dump_from_indexer_to_disk(self):
         sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
@@ -159,21 +165,15 @@ class Indexer:
             merge_dict[key.lower()].extend(posting_dict_to_delete)
 
     def merge_files(self):
-        # self.postings_files_names = sorted([os.path.join(d, x)
-        #                              for d, dirs, files in os.walk("postings")
-        #                              for x in files])
+        self.postings_files_names = sorted([os.path.join(d, x)
+                                     for d, dirs, files in os.walk("postings\\WithoutStem")
+                                     for x in files if "final" not in x])
 
         for i, posting in enumerate(self.postings_files_names):
-            part_of_posting = self.read_part_of_posting(posting, i)
+            part_of_posting = self.read_part_of_posting(posting, i, False, True)
             self.files_to_merge.append(part_of_posting)
 
         self.k_elements_sort()
-        # self.test_func()
-        # print(self.counter)
-
-        # pickle_out = open("inverted_index".format(Indexer.PICKLE_COUNTER), "wb")
-        # pickle.dump(self.inverted_idx, pickle_out)
-        # pickle_out.close()
 
         print("inverted size is {}".format(len(self.inverted_idx)))
         print("total terms merged {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
@@ -281,15 +281,11 @@ class Indexer:
         # print("final postings len is {}".format(len(final1) + len(final2) + len(final3) + len(final4)))
         # print("set size is {}".format(len(unique)))
 
-    # d1 = [["a", [('20', 5), ('40', 8)]], ["aa", [('3', 4)]], ["aaa", [('4', 9)]]]
-    # d2 = [["aa", [('4', 2)]], ["aaa", [('8', 7)]], ["bal", [('4110', 77)]]]
-    # self.files_to_merge = []
-    # self.files_to_merge.append(d1)
-    # self.files_to_merge.append(d2)
-
-    def read_part_of_posting(self, posting, num_of_file, last_file=False):
+    def read_part_of_posting(self, posting, num_of_file, last_file=False, first_read=False):
         """gets a posting NAME and it's index!! and reads it's content from the disk
            store the file descriptor of current posting file"""
+        # self.num_of_reads += 1
+        # print("num of reads: {}".format(self.num_of_reads))
         num_of_file += 1  # this gives values of 1..* to file names, skipping 0
         pickle_in = open("{}".format(posting), "rb")
         if num_of_file in self.file_descriptor_dict:
@@ -297,25 +293,41 @@ class Indexer:
             pickle_in.seek(fdr)
         part_of_posting = []
 
-        if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
-            amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        else:
-            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
-
+        # if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:TODO
+        #     amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
+        # else:
+        #     amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        amount_to_read = 2325
         if last_file:
             amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
 
-        for i in range(amount_to_read):
-            try:
-                key_value = pickle.load(pickle_in)
-                part_of_posting.append(key_value)
-            except:
-                break
 
-        ###################################
-        # self.counter -= len(part_of_posting)
-        # print("{} len is: {}".format(posting, len(part_of_posting)))
-        ###################################
+        if first_read:
+            for i in range(amount_to_read):
+                try:
+                    key_value = pickle.load(pickle_in)
+                    part_of_posting.append(key_value)
+                except:
+                    break
+        else:
+            for i in range(amount_to_read):
+                try:
+                    key_value = pickle.load(pickle_in)
+                    part_of_posting.append(key_value)
+                    self.values_size += len(key_value[1])
+
+                    if self.values_size >= 1000000:
+                        self.values_size = 0
+                        break
+                except:
+                    break
+
+        files_len = 0
+        for i in self.files_to_merge:
+            for j in i:
+                files_len += len(j[1])
+        print(files_len)
+
 
         self.file_descriptor_dict[num_of_file] = pickle_in.tell()
         pickle_in.close()
@@ -323,17 +335,21 @@ class Indexer:
         return part_of_posting
 
     def k_elements_sort(self):
-        if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
-            amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        else:
-            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
-        index_list = [0] * Indexer.PICKLE_COUNTER
+        # if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0: TODO
+        #     amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
+        # else:
+        #     amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        # index_list = [0] * Indexer.PICKLE_COUNTER TODO
+
+        amount_to_read = 2325
+        index_list = [0] * 86
+
         merged_dict = {}
         posting_with_min_key = 0  # the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  # the index in which the smallest key is
-        file_name_index_list = [i for i in range(Indexer.PICKLE_COUNTER)]  # maintains correct file number to read from
+        file_name_index_list = [i for i in range(86)] #(Indexer.PICKLE_COUNTER)]  # maintains correct file number to read from TODO
         pivot_indices = [0] * 2  # num of list and index in that list of the current smallest element
-
+        values_size = 0
         merge_count = 0
 
         if len(self.files_to_merge) == 1:
@@ -370,6 +386,7 @@ class Indexer:
                                 self.files_to_merge[0].extend(last_posting_to_insert)
                                 for k in range(index_list[0], len(self.files_to_merge[0])):
                                     merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
+                                    values_size += len(self.files_to_merge[0][k][1]) ##############################
                                 self.final_postings_dump_func(merged_dict)
                                 return
 
@@ -412,6 +429,7 @@ class Indexer:
                                     self.files_to_merge[0].extend(last_posting_to_insert)
                                     for k in range(index_list[0], len(self.files_to_merge[0])):
                                         merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
+                                        values_size += len(self.files_to_merge[0][k][1])#########################
                                     self.final_postings_dump_func(merged_dict)
                                     return
 
@@ -435,6 +453,7 @@ class Indexer:
                     idx_in_min_key_posting = index_list[0]
 
                 merged_dict[pivot[0]] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
+                values_size += len(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1])###############################
                 index_list[posting_with_min_key] += 1
 
                 if index_list[0] == len(self.files_to_merge[0]):
@@ -453,6 +472,7 @@ class Indexer:
                             self.files_to_merge[0].extend(last_posting_to_insert)
                             for k in range(index_list[0], len(self.files_to_merge[0])):
                                 merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
+                                values_size += len(self.files_to_merge[0][k][1])##############################
                             self.final_postings_dump_func(merged_dict)
                             return
 
@@ -461,9 +481,11 @@ class Indexer:
                         index_list[0] = 0
                     continue
 
-                if len(merged_dict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
+                if values_size >= 1000000:
+                    # print(values_size)
                     self.final_postings_dump_func(merged_dict)
                     merged_dict = {}
+                    values_size = 0
 
     def swap_lists(self, index_list, file_name_index_list, index):
         file_name_index_list[index] = file_name_index_list[-1]
@@ -480,11 +502,11 @@ class Indexer:
         pickle_out = open(file_name, "wb")
         num_of_pops = 0
 
-        for key in list(merged_dict):
-            self.inverted_idx[key][1] = file_name
-            self.inverted_idx[key][2] += len(merged_dict[key])
-            if key in Parse.ENTITY_DICT or key in Parse.CAPITAL_LETTER_DICT:
-                self.remove_capital_entity(key, merged_dict)
+        # for key in list(merged_dict):
+        #     self.inverted_idx[key][1] = file_name
+        #     self.inverted_idx[key][2] += len(merged_dict[key])
+        #     if key in Parse.ENTITY_DICT or key in Parse.CAPITAL_LETTER_DICT:
+        #         self.remove_capital_entity(key, merged_dict)
 
         pickle.dump(merged_dict, pickle_out)
         pickle_out.close()

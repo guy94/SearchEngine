@@ -27,59 +27,52 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    for idx in tqdm(range(len(corpus_list))):
-        documents_list = r.read_file(file_name=corpus_list[idx])
-        for i in range(len(documents_list)):
-            parsed_document = p.parse_doc(documents_list[i])
-            if (i == len(documents_list) - 1):
-                indexer.is_last_doc = True
-            indexer.add_new_doc(parsed_document)
-            # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-            number_of_documents += 1
-        indexer.is_last_doc = False
+    # for idx in tqdm(range(len(corpus_list))):
+    #     documents_list = r.read_file(file_name=corpus_list[idx])
+    #     for i in range(len(documents_list)):
+    #         parsed_document = p.parse_doc(documents_list[i])
+    #         if (i == len(documents_list) - 1):
+    #             indexer.is_last_doc = True
+    #         indexer.add_new_doc(parsed_document)
+    #         # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+    #         number_of_documents += 1
+    #     indexer.is_last_doc = False
+    #
+    # with open('spell_dict.json', 'w') as f:
+    #     json.dump(indexer.spell_dict, f)
+    # pickle_out = open("inverted_index", "wb")
+    # pickle.dump(indexer.docs_dict, pickle_out)
+    # pickle_out.close()
+
+
+    ########################################
+    op = open("postings\\WithoutStem\\final_posting_90", "rb")
+    d = pickle.load(op)
+
+
+    ########################################
+
     indexer.merge_files()
 
-    ##################
-    # for doc in next(r.read_file(corpus_list[0])):
-    #     print(number_of_documents)
-    #     parsed_document = p.parse_doc(doc)
-    #     number_of_documents += 1
-    #     if number_of_documents == 10000:
-    #         break
-    ##################
-
-    # Iterate over every document in the file
-    # for idx, document in enumerate(documents_list):
-    #     # parse the document
-    #     print(documents_list[idx])
-    #     parsed_document = p.parse_doc(document)
-    #     number_of_documents += 1
-    #     print(str(number_of_documents))
-    #     # index the document data
-    #     indexer.add_new_doc(parsed_document)
+    pickle_out = open("inverted_index", "ab")
+    pickle.dump(indexer.inverted_idx, pickle_out)
+    pickle.dump(number_of_documents, pickle_out)
+    pickle.dump(Parse.AMOUNT_OF_NUMBERS_IN_CORPUS, pickle_out)
+    pickle_out.close()
 
     print('Finished parsing and indexing. Starting to export files')
     print("number of docs: {}".format(number_of_documents))
 
-    pickle_out = open("inverted_index", "wb")
-    pickle.dump(indexer.inverted_idx, pickle_out)
-    pickle.dump(number_of_documents, pickle_out)
-    pickle.dump(indexer.docs_dict, pickle_out)
-    pickle.dump(Parse.AMOUNT_OF_NUMBERS_IN_CORPUS, pickle_out)
-    pickle_out.close()
-
-    with open('spell_dict.json', 'w') as f:
-        json.dump(indexer.spell_dict, f)
 
 def load_index():
     print('Load inverted index')
     pickle_in = open("inverted_index", "rb")
+    inverted_documents_dict = pickle.load(pickle_in)
     inverted_index = pickle.load(pickle_in)
     number_of_docs = pickle.load(pickle_in)
-    inverted_documents_dict = pickle.load(pickle_in)
     amount_of_numbers_in_corpus = pickle.load(pickle_in)
 
-    return inverted_index, number_of_docs, inverted_documents_dict, amount_of_numbers_in_corpus
+    return inverted_documents_dict, inverted_index, number_of_docs, amount_of_numbers_in_corpus
 
 
 def search_and_rank_query(query, inverted_index, k, number_of_documents, inverted_documents_dict):
@@ -111,7 +104,7 @@ def read_queries_file(queries):
 
 def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve)
-    inverted_index, total_number_of_documents, inverted_documents_dict, amount_of_numbers_in_corpus = load_index()
+    inverted_documents_dict, inverted_index, total_number_of_documents, amount_of_numbers_in_corpus = load_index()
 
     #TODO: check min/max value for k. what if there is no query?
 

@@ -1,7 +1,5 @@
-from datetime import datetime
 import re
 import string
-from urllib.parse import urlparse
 import spacy
 from query import query_object
 from nltk.corpus import stopwords
@@ -9,7 +7,6 @@ from nltk.tokenize import word_tokenize
 from document import Document
 import json
 from nltk.stem.snowball import SnowballStemmer
-nlp = spacy.load("en_core_web_sm")
 
 
 class Parse:
@@ -24,7 +21,8 @@ class Parse:
         self.max_freq_term = 0
         self.term_dict = {}
         self.stop_words = stopwords.words('english')
-        self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…']
+        self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…', '', r'"', "twitter.com", "web", "status", "i", r'i']
+        self.additional = {"twitter.com", "web", "status", "i", r'i'}
         self.stop_words.extend(self.our_stop_words)
         self.stop_words_dict = dict.fromkeys(self.stop_words)
         self.tokens = None
@@ -78,7 +76,7 @@ class Parse:
             broken_urls = self.url_pattern_query.findall(text)
             broken_urls = self.parse_url_text(broken_urls)
             for term in broken_urls:
-                if "http" not in term:
+                if "http" not in term and term not in self.additional:
                     if term.isalpha():
                         if term[0].isupper():
                             term = term.upper()
@@ -93,6 +91,8 @@ class Parse:
 
 
         for i, token in enumerate(self.tokens):
+            if token in self.additional:
+                continue
             if entity_counter > 1:
                 entity_counter -= 1
 
@@ -183,6 +183,8 @@ class Parse:
                     parsed_token_list = parsed_token_list_stemmer
 
                 for term in parsed_token_list:
+                    if term in self.additional:
+                        continue
                     if term not in self.location_dict:
                         self.location_dict[term] = [i]
                     else:
@@ -266,7 +268,7 @@ class Parse:
         broken_urls = self.parse_url_text(raw_urls)
 
         for term in broken_urls:
-            if "http" not in term:
+            if "http" not in term and term not in self.additional:
                 if term.isalpha():
                     if term[0].isupper():
                         term = term.upper()
