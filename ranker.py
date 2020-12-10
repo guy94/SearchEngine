@@ -44,9 +44,11 @@ class Ranker:
 
         k_docs_to_retrieve = []
         for idx, (key, value) in enumerate(sorted_relevant_doc.items()):
-            if idx == k:
+            if idx == 2000:
                 break
-
+            elif idx == k:
+                break
             else:
                 k_docs_to_retrieve.append((key, value))
+
         return k_docs_to_retrieve

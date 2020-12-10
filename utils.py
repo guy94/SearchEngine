@@ -20,3 +20,12 @@ def load_obj(name):
     """
     with open(name + '.pkl', 'rb') as f:
         return pickle.load(f)
+
+def load_inverted_index(name):
+    """
+    This function will load a pickle file
+    :param name: name of the inverted index file
+    :return: loaded inverted index
+    """
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)

@@ -1,5 +1,6 @@
 import json
-
+import csv
+import utils
 from reader import ReadFile
 from configuration import ConfigClass
 from parser_module import Parse
@@ -27,11 +28,11 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    # for idx in tqdm(range(len(corpus_list))):
-    #     documents_list = r.read_file(file_name=corpus_list[idx])
-    #     for i in range(len(documents_list)):
+    # for idx in range(len(corpus_list)):
+    #     documents_list = r.read_file(file_name=corpus_list[idx], read_corpus=True)
+    #     for i in tqdm(range(len(documents_list))):
     #         parsed_document = p.parse_doc(documents_list[i])
-    #         if (i == len(documents_list) - 1):
+    #         if i == len(documents_list) - 1:
     #             indexer.is_last_doc = True
     #         indexer.add_new_doc(parsed_document)
     #         # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
@@ -40,35 +41,33 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
     #
     # with open('spell_dict.json', 'w') as f:
     #     json.dump(indexer.spell_dict, f)
-    # pickle_out = open("inverted_index", "wb")
+    #
+    # pickle_out = open("docs_dict_and_extras", "wb")
     # pickle.dump(indexer.docs_dict, pickle_out)
     # pickle_out.close()
-
-
-    ########################################
-    op = open("postings\\WithoutStem\\final_posting_90", "rb")
-    d = pickle.load(op)
-
-
-    ########################################
+    #
+    # indexer.docs_dict = {}
+    # indexer.spell_dict = {}
 
     indexer.merge_files()
 
-    pickle_out = open("inverted_index", "ab")
-    pickle.dump(indexer.inverted_idx, pickle_out)
+    utils.save_obj(indexer.inverted_idx, "inverted_index")
+    pickle_out = open("docs_dict_and_extras", "ab")
     pickle.dump(number_of_documents, pickle_out)
     pickle.dump(Parse.AMOUNT_OF_NUMBERS_IN_CORPUS, pickle_out)
     pickle_out.close()
 
-    print('Finished parsing and indexing. Starting to export files')
-    print("number of docs: {}".format(number_of_documents))
+    # print('Finished parsing and indexing. Starting to export files')
+    # print("number of docs: {}".format(number_of_documents))
 
 
 def load_index():
-    print('Load inverted index')
-    pickle_in = open("inverted_index", "rb")
+    # print('Load inverted index')
+
+    inverted_index = utils.load_inverted_index("inverted_index")
+
+    pickle_in = open("docs_dict_and_extras", "rb")
     inverted_documents_dict = pickle.load(pickle_in)
-    inverted_index = pickle.load(pickle_in)
     number_of_docs = pickle.load(pickle_in)
     amount_of_numbers_in_corpus = pickle.load(pickle_in)
 
@@ -113,11 +112,15 @@ def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     else:
         queries_as_list = read_queries_file(queries)
 
+    csv_list = [["Query_num", "Tweet_id", "Rank"]]
     for idx, query in enumerate(queries_as_list):
-        start = time.time()
         for doc_tuple in search_and_rank_query(query, inverted_index, num_docs_to_retrieve, total_number_of_documents,
                                                inverted_documents_dict):
-            print('tweet id: {}, score (cosine similarity with tf-idf rank): {}'.format(doc_tuple[0], doc_tuple[1]))
-        end = time.time()
-        print(end - start)
-    print(amount_of_numbers_in_corpus)
+            print('tweet id: {}, score: {}'.format(doc_tuple[0], doc_tuple[1]))
+            csv_line = [idx + 1, doc_tuple[0], doc_tuple[1]]
+            csv_list.append(csv_line)
+
+    with open('results.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(csv_list)
+        
