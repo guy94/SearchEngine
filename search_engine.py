@@ -8,6 +8,8 @@ from indexer import Indexer
 from searcher import Searcher
 import time
 from tqdm import tqdm
+import tracemalloc
+tracemalloc.start(10)
 
 try:
     import _pickle as pickle
@@ -28,34 +30,44 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    # for idx in range(len(corpus_list)):
-    #     documents_list = r.read_file(file_name=corpus_list[idx], read_corpus=True)
-    #     for i in tqdm(range(len(documents_list))):
-    #         parsed_document = p.parse_doc(documents_list[i])
-    #         if i == len(documents_list) - 1:
-    #             indexer.is_last_doc = True
-    #         indexer.add_new_doc(parsed_document)
-    #         # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
-    #         number_of_documents += 1
-    #     indexer.is_last_doc = False
-    #
-    # with open('spell_dict.json', 'w') as f:
-    #     json.dump(indexer.spell_dict, f)
-    #
-    # pickle_out = open("docs_dict_and_extras", "wb")
-    # pickle.dump(indexer.docs_dict, pickle_out)
-    # pickle_out.close()
-    #
-    # indexer.docs_dict = {}
-    # indexer.spell_dict = {}
+    for idx in range(len(corpus_list)):
+        documents_list = r.read_file(file_name=corpus_list[idx], read_corpus=True)
+        for i in tqdm(range(len(documents_list))):
+            parsed_document = p.parse_doc(documents_list[i])
+            if i == len(documents_list) - 1:
+                indexer.is_last_doc = True
+            indexer.add_new_doc(parsed_document)
+            # amount_with_stemmer += len(parsed_document.term_doc_dictionary)
+            number_of_documents += 1
+        indexer.is_last_doc = False
 
+    with open('spell_dict.json', 'w') as f:
+        json.dump(indexer.spell_dict, f)
+
+    pickle_out = open("docs_dict_and_extras", "wb")
+    pickle.dump(indexer.docs_dict, pickle_out)
+    pickle_out.close()
+
+    indexer.docs_dict = {}
+    indexer.spell_dict = {}
+
+    start = time.time()
     indexer.merge_files()
+    end = time.time()
+    print("merge time was: {}".format(end - start))
 
     utils.save_obj(indexer.inverted_idx, "inverted_index")
     pickle_out = open("docs_dict_and_extras", "ab")
     pickle.dump(number_of_documents, pickle_out)
     pickle.dump(Parse.AMOUNT_OF_NUMBERS_IN_CORPUS, pickle_out)
     pickle_out.close()
+
+    snapshot = tracemalloc.take_snapshot()
+    top_stats = snapshot.statistics('lineno')
+
+    print("[ Top 10 ]")
+    for stat in top_stats[:10]:
+        print(stat)
 
     # print('Finished parsing and indexing. Starting to export files')
     # print("number of docs: {}".format(number_of_documents))
@@ -116,7 +128,7 @@ def main(corpus_path, output_path, stemming, queries, num_docs_to_retrieve):
     for idx, query in enumerate(queries_as_list):
         for doc_tuple in search_and_rank_query(query, inverted_index, num_docs_to_retrieve, total_number_of_documents,
                                                inverted_documents_dict):
-            print('tweet id: {}, score: {}'.format(doc_tuple[0], doc_tuple[1]))
+            # print('tweet id: {}, score: {}'.format(doc_tuple[0], doc_tuple[1]))
             csv_line = [idx + 1, doc_tuple[0], doc_tuple[1]]
             csv_list.append(csv_line)
 

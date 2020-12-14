@@ -1,13 +1,11 @@
-import os
-import sys
 from parser_module import Parse
-
 try:
     import _pickle as pickle
 except:
     import pickle
 import bisect
 from datetime import datetime
+import gc
 
 
 class Indexer:
@@ -162,9 +160,9 @@ class Indexer:
             merge_dict[key.lower()].extend(posting_dict_to_delete)
 
     def merge_files(self):
-        self.postings_files_names = sorted([os.path.join(d, x)  # TODO
-                                     for d, dirs, files in os.walk("posting\\WithoutStem")
-                                     for x in files if "final" not in x])
+        # self.postings_files_names = sorted([os.path.join(d, x)  # TODO
+        #                              for d, dirs, files in os.walk("posting\\WithoutStem")
+        #                              for x in files if "final" not in x])
 
         for i, posting in enumerate(self.postings_files_names):
             part_of_posting = self.read_part_of_posting(posting, i, False, True)
@@ -172,8 +170,8 @@ class Indexer:
 
         self.k_elements_sort()
 
-        # print("inverted size is {}".format(len(self.inverted_idx)))
-        # print("total terms merged {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
+        print("inverted size is {}".format(len(self.inverted_idx)))
+        print("total terms merged {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
 
     # def test_func(self):
     # pickle_in1 = open("postings\\posting_1", "rb")
@@ -290,14 +288,14 @@ class Indexer:
             pickle_in.seek(fdr)
         part_of_posting = []
 
-        # if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0: TODO
-        #     amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        # else:
-        #     amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
-        # if last_file:
-        #     amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
+            amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
+        else:
+            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        if last_file:
+            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
 
-        amount_to_read = 2325
+        # amount_to_read = 2325
         if first_read:
             for i in range(amount_to_read):
                 try:
@@ -327,24 +325,23 @@ class Indexer:
         self.file_descriptor_dict[num_of_file] = pickle_in.tell()
         pickle_in.close()
 
-        print("part of posting size is: {}".format(sys.getsizeof(part_of_posting)))
 
         return part_of_posting
 
     def k_elements_sort(self):
-        # if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0: TODO
-        #     amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        # else:
-        #     amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
-        # index_list = [0] * Indexer.PICKLE_COUNTER
+        if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
+            amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
+        else:
+            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        index_list = [0] * Indexer.PICKLE_COUNTER
 
-        amount_to_read = 2325
-        index_list = [0] * 98
+        # amount_to_read = 2325
+        # index_list = [0] * 98
 
         merged_dict = {}
         posting_with_min_key = 0  # the number of the list containing the smallest key of the iteration
         idx_in_min_key_posting = 0  # the index in which the smallest key is
-        file_name_index_list = [i for i in range(98)] #Indexer.PICKLE_COUNTER)]  # maintains correct file number to read from TODO
+        file_name_index_list = [i for i in range(Indexer.PICKLE_COUNTER)]  # maintains correct file number to read from
         pivot_indices = [0] * 2  # num of list and index in that list of the current smallest element
         values_size = 0  # counts the length of posting lists
         # merge_count = 0
@@ -413,9 +410,6 @@ class Indexer:
                             num_of_file = file_name_index_list[j]
                             posting_to_insert = self.read_part_of_posting(self.postings_files_names[num_of_file],
                                                                           num_of_file)
-                            print("posting_to_insert size is: {}".format(sys.getsizeof(posting_to_insert)))
-                            print("------------------------------------------------------------")
-
                             if not posting_to_insert:
 
                                 self.swap_lists(index_list, file_name_index_list, j)
@@ -503,11 +497,11 @@ class Indexer:
         pickle_out = open(file_name, "wb")
         num_of_pops = 0
 
-        # for key in list(merged_dict):
-        #     self.inverted_idx[key][1] = file_name
-        #     self.inverted_idx[key][2] += len(merged_dict[key])
-        #     if key in Parse.ENTITY_DICT or key in Parse.CAPITAL_LETTER_DICT:
-        #         self.remove_capital_entity(key, merged_dict)
+        for key in list(merged_dict):
+            self.inverted_idx[key][1] = file_name
+            self.inverted_idx[key][2] += len(merged_dict[key])
+            if key in Parse.ENTITY_DICT or key in Parse.CAPITAL_LETTER_DICT:
+                self.remove_capital_entity(key, merged_dict)
 
         pickle.dump(merged_dict, pickle_out)
         pickle_out.close()

@@ -22,6 +22,11 @@ class Parse:
         self.term_dict = {}
         self.stop_words = stopwords.words('english')
         self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…', '', r'"', "twitter.com", "web", "status", "i", r'i']
+        self.stop_words.extend([r' ', r'', r"", r"''", r'""', r'"', r"“", r"”", r"’", r"‘", r"``", r"'", r"`", '"'])
+        self.stop_words.extend(
+            ['rt', r'!', r'?', r',', r':', r';', r'(', r')', r'...', r'[', ']', r'{', '}' "'&'", '$', '.', r'\'s',
+             '\'s', '\'d', r'\'d', r'n\'t'])
+        self.stop_words.extend(['1️⃣.1️⃣2️⃣'])
         self.additional = {"twitter.com", "web", "status", "i", r'i'}
         self.stop_words.extend(self.our_stop_words)
         self.stop_words_dict = dict.fromkeys(self.stop_words)
@@ -47,6 +52,9 @@ class Parse:
         self.url_pattern_query = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 
         self.split_url_pattern = re.compile(r"[\w'|.|-]+")
+
+        self.non_latin_pattern = re.compile(
+            pattern=r'[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF\u2019]')
 
         self.emojis_pattern = re.compile(pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
         u"\ufe0f"u"\U0001F1E0-\U0001F1FF"u"\u2640-\u2642"u"\u200d"u"\U00002500-\U00002BEF"u"\U00010000-\U0010ffff"u"\U0001f926-\U0001f937"u"\U000024C2-\U0001F251"u"\u23cf"
@@ -283,6 +291,7 @@ class Parse:
                     self.max_freq_term = self.term_dict[term]
 
         concatenated_text = self.concatenate_tweets(full_text, retweet_text, retweet_quoted_text, quoted_text)
+        concatenated_text = self.non_latin_pattern.sub('', concatenated_text)
         term_dict = self.parse_sentence(concatenated_text)
 
         doc_length = len(self.tokens)  # after text operations.
@@ -354,12 +363,8 @@ class Parse:
         :param token: example --> #stay_at_home
         :return: list of a decomposed hashtag --> [stay,at,home,#stayathome]
         """
-        #token = re.sub('[_]', '', token)
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
-        #tokens_with_hashtag.append(token)
-        # if "-"  in token:
-        # to_see = self.hashtag_pattern.split(token)
         tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
 
         return tokens_with_hashtag
@@ -370,20 +375,18 @@ class Parse:
         :return: list of a parsed phrase split by set of rules --> [https, www, instagram.com, p, CD7fAPWs3WM , igshid , o9kf0ugp1l8x]
         """
         to_return = []
-        is_colon_in_domain = False
         for token in urls:
-            # domain = (re.findall(r'(www\.)?(\w+[-?\w+]?)(\.\w+)', token))
-            # domain = urlparse(token).netloc
 
-            ###################
             url = self.split_url_pattern.findall(token)
 
             for i, elem in enumerate(url):
                 if 'www.' in elem:
                     address = url[i].split('.', 1)
                     url[i] = address[1]
-                    url.insert(i, address[0])
-            to_return.extend(url)
+                    # url.insert(i, address[0])
+                    to_return = [address[1]]
+                    break
+            # to_return.extend(url)
 
         return to_return
 
