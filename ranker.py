@@ -29,7 +29,7 @@ class Ranker:
 
         sorted_ranked_docs_dict = {k: v for k, v in
                                    sorted(ranked_docs_dict.items(), key=lambda item: (item[1],
-                                                                  1 / inverted_documents_dict[item[0]][1]), reverse=True)}
+                                                                  1 / inverted_documents_dict[str(item[0])][1]), reverse=True)}
 
         return sorted_ranked_docs_dict
 

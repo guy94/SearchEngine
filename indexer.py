@@ -1,4 +1,9 @@
+import json
+import os
+
+import utils
 from parser_module import Parse
+
 try:
     import _pickle as pickle
 except:
@@ -16,6 +21,7 @@ class Indexer:
 
     def __init__(self, config):
 
+        self.pos_count = 0
         self.not_finished_capital = {}
         self.inverted_idx = {}
         self.postingDict = {}
@@ -29,6 +35,12 @@ class Indexer:
         self.is_last_doc = False
         self.values_size = 0
         self.spell_dict = {}
+        self.one_time_appearance_list = []
+
+        ######
+        self.counter = 0
+
+        ######
 
         if config.toStem:
             self.dump_path = config.saveFilesWithStem
@@ -67,8 +79,8 @@ class Indexer:
                 term_freq = document_dictionary[term]
 
                 if term not in self.postingDict:
-                    self.postingDict[term] = [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                                               list_of_indices)]
+                    self.postingDict[term] = [(int(document.tweet_id), document_dictionary[term], term_freq / max_freq_term)]
+                    # list_of_indices)]
                     self.values_size += 1
 
                 # else:
@@ -78,8 +90,8 @@ class Indexer:
 
                 else:
                     self.postingDict[term].extend(
-                        [(document.tweet_id, document_dictionary[term], term_freq / max_freq_term,
-                          list_of_indices)])
+                        [(int(document.tweet_id), document_dictionary[term], term_freq / max_freq_term)])
+                    # list_of_indices)])
                     self.values_size += 1
 
                 if document.tweet_id not in self.docs_dict:
@@ -160,7 +172,7 @@ class Indexer:
             merge_dict[key.lower()].extend(posting_dict_to_delete)
 
     def merge_files(self):
-        # self.postings_files_names = sorted([os.path.join(d, x)  # TODO
+        # self.postings_files_names = sorted([os.path.join(d, x)  #
         #                              for d, dirs, files in os.walk("posting\\WithoutStem")
         #                              for x in files if "final" not in x])
 
@@ -168,7 +180,13 @@ class Indexer:
             part_of_posting = self.read_part_of_posting(posting, i, False, True)
             self.files_to_merge.append(part_of_posting)
 
+        self.docs_dict = {}
+        self.spell_dict = {}
+        self.postingDict = {}
+
         self.k_elements_sort()
+
+        self.remove_redundant_terms()
 
         print("inverted size is {}".format(len(self.inverted_idx)))
         print("total terms merged {}".format(Indexer.TOTAL_TERMS_AFTER_MERGE))
@@ -279,52 +297,47 @@ class Indexer:
     def read_part_of_posting(self, posting, num_of_file, last_file=False, first_read=False):
         """gets a posting NAME and it's index!! and reads it's content from the disk
            store the file descriptor of current posting file"""
-        # self.num_of_reads += 1
-        # print("num of reads: {}".format(self.num_of_reads))
         num_of_file += 1  # this gives values of 1..* to file names, skipping 0
-        pickle_in = open("{}".format(posting), "rb")
-        if num_of_file in self.file_descriptor_dict:
-            fdr = self.file_descriptor_dict[num_of_file]
-            pickle_in.seek(fdr)
-        part_of_posting = []
 
-        if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
-            amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
-        else:
-            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
-        if last_file:
-            amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+        with open(posting, 'rb') as pickle_in:
+            # pickle_in = open("{}".format(posting), "rb")
+            if num_of_file in self.file_descriptor_dict:
+                fdr = self.file_descriptor_dict[num_of_file]
+                pickle_in.seek(fdr)
+            part_of_posting = []
 
-        # amount_to_read = 2325
-        if first_read:
-            for i in range(amount_to_read):
-                try:
-                    key_value = pickle.load(pickle_in)
-                    part_of_posting.append(key_value)
-                except:
-                    break
-        else:
-            for i in range(amount_to_read):
-                try:
-                    key_value = pickle.load(pickle_in)
-                    part_of_posting.append(key_value)
-                    self.values_size += len(key_value[1])
+            if int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER) > 0:
+                amount_to_read = int(Indexer.NUM_OF_TERMS_IN_POSTINGS / Indexer.PICKLE_COUNTER)
+            else:
+                amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
+            if last_file:
+                amount_to_read = Indexer.NUM_OF_TERMS_IN_POSTINGS
 
-                    if self.values_size >= 1000000:
-                        self.values_size = 0
+            # amount_to_read = 2325
+            if first_read:
+                for i in range(amount_to_read):
+                    try:
+                        key_value = utils.load_list(pickle_in)
+                        # key_value = pickle.load(pickle_in)
+                        part_of_posting.append(key_value)
+                    except:
                         break
-                except:
-                    break
+            else:
+                for i in range(amount_to_read):
+                    try:
+                        key_value = utils.load_list(pickle_in)
+                        # key_value = pickle.load(pickle_in)
+                        part_of_posting.append(key_value)
+                        self.values_size += len(key_value[1])
 
-        # files_len = 0
-        # for i in self.files_to_merge:
-        #     for j in i:
-        #         files_len += len(j[1])
-        # print(files_len)
+                        if self.values_size >= 2000000:
+                            self.values_size = 0
+                            break
+                    except:
+                        break
 
-        self.file_descriptor_dict[num_of_file] = pickle_in.tell()
-        pickle_in.close()
-
+            self.file_descriptor_dict[num_of_file] = pickle_in.tell()
+        # pickle_in.close()
 
         return part_of_posting
 
@@ -336,7 +349,7 @@ class Indexer:
         index_list = [0] * Indexer.PICKLE_COUNTER
 
         # amount_to_read = 2325
-        # index_list = [0] * 98
+        # index_list = [0] * 49
 
         merged_dict = {}
         posting_with_min_key = 0  # the number of the list containing the smallest key of the iteration
@@ -348,7 +361,10 @@ class Indexer:
 
         if len(self.files_to_merge) == 1:
             for k in self.files_to_merge[0]:
-                merged_dict[k[0]] = k[1]
+                if len(k[1]) > 1:
+                    merged_dict[k[0]] = k[1]
+                else:
+                    self.one_time_appearance_list.append(k[0])
             self.final_postings_dump_func(merged_dict)
             return
 
@@ -379,8 +395,12 @@ class Indexer:
 
                                 self.files_to_merge[0].extend(last_posting_to_insert)
                                 for k in range(index_list[0], len(self.files_to_merge[0])):
+                                    # if len(self.files_to_merge[0][k][1]) > 1:
                                     merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
                                     values_size += len(self.files_to_merge[0][k][1])  ##############################
+                                    # else:
+                                    #     self.one_time_appearance_list.append(self.files_to_merge[0][k][0])
+
                                 self.final_postings_dump_func(merged_dict)
                                 return
 
@@ -421,8 +441,12 @@ class Indexer:
 
                                     self.files_to_merge[0].extend(last_posting_to_insert)
                                     for k in range(index_list[0], len(self.files_to_merge[0])):
+                                        # if len(self.files_to_merge[0][k][1]) > 1:
                                         merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
                                         values_size += len(self.files_to_merge[0][k][1])  #########################
+                                        # else:
+                                        #     self.one_time_appearance_list.append(self.files_to_merge[0][k][0])
+
                                     self.final_postings_dump_func(merged_dict)
                                     return
 
@@ -445,9 +469,20 @@ class Indexer:
                     posting_with_min_key = 0
                     idx_in_min_key_posting = index_list[0]
 
-                merged_dict[pivot[0]] = self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
-                values_size += len(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][
-                                       1])  ###############################
+                add_last = True
+                if self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0] in merged_dict and add_last:
+                    add_last = False
+                    merged_dict[self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0]]\
+                        .extend(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1])
+
+                if add_last:
+                    if len(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]) > 1:
+                        merged_dict[self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0]] = \
+                            self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
+                        values_size += len(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1])
+                    else:
+                        self.one_time_appearance_list.append(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0])
+
                 index_list[posting_with_min_key] += 1
 
                 if index_list[0] == len(self.files_to_merge[0]):
@@ -465,8 +500,12 @@ class Indexer:
 
                             self.files_to_merge[0].extend(last_posting_to_insert)
                             for k in range(index_list[0], len(self.files_to_merge[0])):
+                                # if len(self.files_to_merge[0][k][1]) > 1:
                                 merged_dict[self.files_to_merge[0][k][0]] = self.files_to_merge[0][k][1]
-                                values_size += len(self.files_to_merge[0][k][1])  ##############################
+                                values_size += len(self.files_to_merge[0][k][1])
+                                # else:
+                                #     self.one_time_appearance_list.append(self.files_to_merge[0][k][0])
+
                             self.final_postings_dump_func(merged_dict)
                             return
 
@@ -476,8 +515,7 @@ class Indexer:
                     continue
 
                 # if len(merged_dict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:  # limits the legnth of the total posting lists in each final file
-                if values_size >= 1000000:
-                    # print(values_size)
+                if values_size >= 2000000:
                     self.final_postings_dump_func(merged_dict)
                     merged_dict = {}
                     values_size = 0
@@ -493,9 +531,8 @@ class Indexer:
     def final_postings_dump_func(self, merged_dict):
 
         Indexer.FINAL_POSTINGS_COUNTER += 1
-        file_name = self.dump_path + "\\final_posting_{}".format(Indexer.FINAL_POSTINGS_COUNTER)
-        pickle_out = open(file_name, "wb")
-        num_of_pops = 0
+        file_name = Indexer.FINAL_POSTINGS_COUNTER
+        pickle_out = open(self.dump_path + "\\" + str(file_name), "wb")
 
         for key in list(merged_dict):
             self.inverted_idx[key][1] = file_name
@@ -505,10 +542,11 @@ class Indexer:
 
         pickle.dump(merged_dict, pickle_out)
         pickle_out.close()
-        Indexer.TOTAL_TERMS_AFTER_MERGE += (len(merged_dict) - num_of_pops)
+        Indexer.TOTAL_TERMS_AFTER_MERGE += (len(merged_dict))
 
     def merge(self, left, right):
         """Merge sort merging function."""
+        ## TODO: if we use that function, consider convert tweetid to int
         left_index, right_index = 0, 0
         result = []
         while left_index < len(left) and right_index < len(right):
@@ -529,3 +567,16 @@ class Indexer:
     #         if result[i][0] > result[i+1][0]:
     #             print(False)
     #     # print(True)
+
+    def remove_redundant_terms(self):
+        with open("spell_dict.json", "r") as json_in:
+            spell_dict = json.load(json_in)
+
+        for term in self.one_time_appearance_list:
+            if term in self.inverted_idx:
+                del self.inverted_idx[term]
+
+            if term in spell_dict:
+                del spell_dict[term]
+        with open('spell_dict.json', 'w') as f:
+            json.dump(spell_dict, f)

@@ -14,7 +14,7 @@ from query import query_object
 
 class Searcher:
 
-    def __init__(self, inverted_index, number_of_documents):
+    def __init__(self, inverted_index, number_of_documents, load_path):
         """
         :param inverted_index: dictionary of inverted index
         :param number_of_documents: number of documents in the corpus
@@ -30,6 +30,8 @@ class Searcher:
         self.number_of_documents = number_of_documents
         self.docs_dict = {}
         self.spell = SpellChecker(local_dictionary='spell_dict.json', distance=1)
+
+        self.load_path = load_path + "\\{}"
 
     def relevant_docs_from_posting(self, query):
         """
@@ -122,7 +124,7 @@ class Searcher:
         :param posting_name: file name
         :return: posting file
         """
-        pickle_in = open("{}".format(posting_name), "rb")
+        pickle_in = open(self.load_path.format(posting_name), "rb")
         dict_to_load = pickle.load(pickle_in)
         pickle_in.close()
 

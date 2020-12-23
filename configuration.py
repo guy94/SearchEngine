@@ -1,6 +1,5 @@
 class ConfigClass:
     def __init__(self, corpus_path, output_path, stemming):
-        # C:\\Users\\guykl\\PycharmProjects\\Data
         self.corpusPath = corpus_path
         self.savedFileMainFolder = output_path
         self.saveFilesWithStem = self.savedFileMainFolder + "\\WithStem"

@@ -1,6 +1,5 @@
 import re
 import string
-import spacy
 from query import query_object
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
@@ -21,7 +20,9 @@ class Parse:
         self.max_freq_term = 0
         self.term_dict = {}
         self.stop_words = stopwords.words('english')
-        self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…', '', r'"', "twitter.com", "web", "status", "i", r'i']
+        self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…', '', r'"',
+                               "twitter.com", "web", "status", "i", r'i', "n't", "--", "'re", "..", "'it", "'m"
+                               , "......", ".....", "//", "'ve", "N'T", "'ll", "S", "s"]
         self.stop_words.extend([r' ', r'', r"", r"''", r'""', r'"', r"“", r"”", r"’", r"‘", r"``", r"'", r"`", '"'])
         self.stop_words.extend(
             ['rt', r'!', r'?', r',', r':', r';', r'(', r')', r'...', r'[', ']', r'{', '}' "'&'", '$', '.', r'\'s',
@@ -71,6 +72,7 @@ class Parse:
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict]
         self.tokens = text_tokens_without_stopwords
+        # print(self.tokens)
 
         last_number_parsed = None
         count_num_in_a_row = 0
@@ -121,6 +123,13 @@ class Parse:
 
             elif self.emojis_pattern.match(token):
                 continue
+
+            elif token.startswith("'") or token.startswith("-"):
+                token = token[1:]
+
+            elif token.endswith("."):
+                token = token[:-1]
+
             elif token.isalpha():  #: capital letters and entities
                 entity_str = ""
                 if entity_counter == 1:
@@ -179,6 +188,12 @@ class Parse:
                 else:
                     parsed_token_list = number_as_list
 
+            elif "/" in token and "//t" not in token:
+                split_slash = token.split("/")
+                for word in split_slash:
+                    if len(word) > 1:
+                        parsed_token_list.append(word)
+
             if len(parsed_token_list) > 0:
 
                 if self.stemmer:
@@ -209,6 +224,8 @@ class Parse:
                 # if token not in self.dict_punctuation:
                 if "//t" not in token and token not in self.dict_punctuation:
                     token = token.lower()
+
+                    # print(str(i) + ":    "+ str(token))
                     if self.stemmer:
                         token = self.snow_stemmer.stem(token)
 
@@ -223,7 +240,6 @@ class Parse:
                         term_dict[token] += 1
                     if term_dict[token] > self.max_freq_term:
                         self.max_freq_term = term_dict[token]
-
         return term_dict
 
     def parse_query(self, query):
@@ -378,14 +394,12 @@ class Parse:
         for token in urls:
 
             url = self.split_url_pattern.findall(token)
-
             for i, elem in enumerate(url):
                 if 'www.' in elem:
                     address = url[i].split('.', 1)
                     url[i] = address[1]
                     # url.insert(i, address[0])
-                    to_return = [address[1]]
-                    break
+                    to_return.extend([address[1]])
             # to_return.extend(url)
 
         return to_return
