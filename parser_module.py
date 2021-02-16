@@ -1,15 +1,16 @@
 import re
 import string
-from query import query_object
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from document import Document
 import json
 from nltk.stem.snowball import SnowballStemmer
 
+from query import query_object
+
 
 class Parse:
-    stemmer = False
+    STEMMER = True
     CAPITAL_LETTER_DICT = {}
     idx = 0
     ENTITY_DICT = {}
@@ -17,17 +18,17 @@ class Parse:
     AMOUNT_OF_NUMBERS_IN_CORPUS = 0
 
     def __init__(self):
+        self.problem_terms_to_check = []
         self.max_freq_term = 0
         self.term_dict = {}
         self.stop_words = stopwords.words('english')
         self.our_stop_words = ["RT", "http", "https", r"", r"'", r"''", r'"', '``', '’', r'', r"", '...', '…', '', r'"',
                                "twitter.com", "web", "status", "i", r'i', "n't", "--", "'re", "..", "'it", "'m"
-                               , "......", ".....", "//", "'ve", "N'T", "'ll", "S", "s"]
-        self.stop_words.extend([r' ', r'', r"", r"''", r'""', r'"', r"“", r"”", r"’", r"‘", r"``", r"'", r"`", '"'])
-        self.stop_words.extend(
-            ['rt', r'!', r'?', r',', r':', r';', r'(', r')', r'...', r'[', ']', r'{', '}' "'&'", '$', '.', r'\'s',
-             '\'s', '\'d', r'\'d', r'n\'t'])
-        self.stop_words.extend(['1️⃣.1️⃣2️⃣'])
+                               , "......", ".....", "//", "'ve", "N'T", "'ll", "S", "s", r' ', r'', r"", r"''"
+                               ,r"’", r"‘", r"``", r"'", r"`", '"', r'""', r'"', r"“", r"”",
+                               'rt', r'!', r'?', r',', r':', r';', r'(', r')', r'...', r'[', ']', r'{', '}' "'&'", '$',
+                               '.', r'\'s', '\'s', '\'d', r'\'d', r'n\'t','1️⃣.1️⃣2️⃣', '~~', '...']
+
         self.additional = {"twitter.com", "web", "status", "i", r'i'}
         self.stop_words.extend(self.our_stop_words)
         self.stop_words_dict = dict.fromkeys(self.stop_words)
@@ -38,30 +39,23 @@ class Parse:
         self.snow_stemmer = SnowballStemmer(language='english')
 
         self.number_pattern = re.compile("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?\w?[k|K|m|M|b|B]?"
-                                    "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
-
+                                         "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?[k|K|m|M|b|B]?")
         self.date_pattern = re.compile("\d{1,4}[-\.\/]\d{1,4}([-\.\/]\d{1,4})?")
-
         self.hashtag_pattern = re.compile("([A-Z]*[a-z]*)([\d]*)?""|([A-Z]*[a-z]*)([\d]*)?[_-]([A-Z]*[a-z]*)([\d]*)?")
-
         self.url_puctuation_pattern = re.compile("[:/=?#]")
-
         self.str_no_commas_pattern = re.compile("[^-?\d\./]")
-
         self.url_pattern = re.compile("(?P<url>https?://[^\s]+)")
-
-        self.url_pattern_query = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-
+        self.url_pattern_query = re.compile(
+            'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
         self.split_url_pattern = re.compile(r"[\w'|.|-]+")
-
         self.non_latin_pattern = re.compile(
             pattern=r'[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF\u2019]')
+        self.emojis_pattern = re.compile(
+            pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
+                    u"\ufe0f"u"\U0001F1E0-\U0001F1FF"u"\u2640-\u2642"u"\u200d"u"\U00002500-\U00002BEF"u"\U00010000-\U0010ffff"u"\U0001f926-\U0001f937"u"\U000024C2-\U0001F251"u"\u23cf"
+                    u"\u23e9"u"\u231a"u"\u2600-\u2B55""]+", flags=re.UNICODE)
 
-        self.emojis_pattern = re.compile(pattern="["u"\U0001F600-\U0001F64F"u"\U0001F300-\U0001F5FF"u"\U0001F680-\U0001F6FF"u"\u3030"u"\U00002702-\U000027B0"
-        u"\ufe0f"u"\U0001F1E0-\U0001F1FF"u"\u2640-\u2642"u"\u200d"u"\U00002500-\U00002BEF"u"\U00010000-\U0010ffff"u"\U0001f926-\U0001f937"u"\U000024C2-\U0001F251"u"\u23cf"
-        u"\u23e9"u"\u231a"u"\u2600-\u2B55""]+", flags=re.UNICODE)
-
-    def parse_sentence(self, text):
+    def parse_sentence(self, text, query_tokenized=None):
         """
         This function tokenize, remove stop words and apply lower case for every word within the text
         :param text:
@@ -72,7 +66,6 @@ class Parse:
         text_tokens = word_tokenize(text)
         text_tokens_without_stopwords = [w for w in text_tokens if w not in self.stop_words_dict]
         self.tokens = text_tokens_without_stopwords
-        # print(self.tokens)
 
         last_number_parsed = None
         count_num_in_a_row = 0
@@ -98,7 +91,6 @@ class Parse:
                         term_dict[term] += 1
                     if term_dict[term] > self.max_freq_term:
                         self.max_freq_term = term_dict[term]
-
 
         for i, token in enumerate(self.tokens):
             if token in self.additional:
@@ -133,7 +125,9 @@ class Parse:
             elif token.isalpha():  #: capital letters and entities
                 entity_str = ""
                 if entity_counter == 1:
-                    while token.istitle() and i + entity_counter < len(self.tokens) and (self.tokens[i + entity_counter].istitle() or self.istitle_with_hyphen(self.tokens[i + entity_counter])):
+                    while token.istitle() and i + entity_counter < len(self.tokens) and (
+                            self.tokens[i + entity_counter].istitle() or self.istitle_with_hyphen(
+                            self.tokens[i + entity_counter])):
                         entity_str += " " + self.tokens[i + entity_counter]
                         entity_counter += 1
                     entity_counter += 1
@@ -152,7 +146,7 @@ class Parse:
 
             if token.startswith('@'):  #: @ sign
                 if i < len(self.tokens) - 1:
-                    parsed_token_list = [token + self.tokens[i + 1]]
+                    parsed_token_list = []
                     count_num_in_a_row = 0
                     self.tokens.pop(i + 1)
 
@@ -160,11 +154,12 @@ class Parse:
                 if i < len(self.tokens) - 1:
                     parsed_token_list = self.parse_hashtag(token + self.tokens[i + 1])
                     count_num_in_a_row = 0
-                    self.tokens.pop(i+1)
+                    self.tokens.pop(i + 1)
 
 
             elif is_date:  # date format
                 parsed_token_list = [token]
+                is_date = False
 
             elif len(number_as_list) != 0 and len(parsed_token_list) == 0:  #: numbers
                 if len(number_as_list) > 1:
@@ -174,7 +169,8 @@ class Parse:
                     if i == 0 and i < len(self.tokens) - 1:
                         parsed_token_list = list(self.parse_numbers(number_as_list[0], None, self.tokens[i + 1]))
                     elif i < len(self.tokens) - 1:
-                        parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
+                        parsed_token_list = list(
+                            self.parse_numbers(number_as_list[0], self.tokens[i - 1], self.tokens[i + 1]))
                     else:
                         parsed_token_list = list(self.parse_numbers(number_as_list[0], self.tokens[i - 1], None))
 
@@ -196,7 +192,7 @@ class Parse:
 
             if len(parsed_token_list) > 0:
 
-                if self.stemmer:
+                if self.STEMMER:
                     parsed_token_list_stemmer = []
                     for word in parsed_token_list:
                         if word.isalpha():
@@ -219,28 +215,37 @@ class Parse:
                         term_dict[term] += 1
                     if term_dict[term] > self.max_freq_term:
                         self.max_freq_term = term_dict[term]
-        #############################
+            #############################
             else:
-                # if token not in self.dict_punctuation:
-                if "//t" not in token and token not in self.dict_punctuation:
-                    token = token.lower()
+                # garbage = token.isalnum()
+                if "//t" not in token and token not in self.dict_punctuation and token not in self.stop_words_dict:
+                    is_ascii = self.check_ascii(token)
+                    if is_ascii:
+                        token = token.lower()
 
-                    # print(str(i) + ":    "+ str(token))
-                    if self.stemmer:
-                        token = self.snow_stemmer.stem(token)
+                        if self.STEMMER:
+                            token = self.snow_stemmer.stem(token)
 
-                    if token not in self.location_dict:
-                        self.location_dict[token] = [i]
-                    else:
-                        self.location_dict[token].append(i)
+                        if token not in self.location_dict:
+                            self.location_dict[token] = [i]
+                        else:
+                            self.location_dict[token].append(i)
 
-                    if token not in term_dict:
-                        term_dict[token] = 1
-                    else:
-                        term_dict[token] += 1
-                    if term_dict[token] > self.max_freq_term:
-                        self.max_freq_term = term_dict[token]
+                        if token not in term_dict:
+                            term_dict[token] = 1
+                        else:
+                            term_dict[token] += 1
+                        if term_dict[token] > self.max_freq_term:
+                            self.max_freq_term = term_dict[token]
+
         return term_dict
+
+    def check_ascii(self, token):
+        # if type(token) == int:
+        #     return True
+        # if len(token) == 0:
+        #     return False
+        return all((ord(char) > 32) and (ord(char) < 128) for char in token)
 
     def parse_query(self, query):
         """
@@ -249,11 +254,14 @@ class Parse:
         :return: query object with corresponding fields.
         """
         Parse.Parsing_a_word = True
+        query_tokenized = word_tokenize(query)
+        query_tokenized = [w for w in query_tokenized if w not in self.stop_words_dict]
         query_dict = self.parse_sentence(query)
+
         location_dict = self.location_dict
         max_freq = self.max_freq_term
         query_length = len(query_dict)
-        query = query_object(query_dict, query_length, max_freq, location_dict)
+        query = query_object(query_dict, query_length, max_freq, query_tokenized, location_dict)
         self.max_freq_term = 0
         self.term_dict = {}
         self.location_dict = {}
@@ -382,7 +390,7 @@ class Parse:
         tokens_with_hashtag = [token.lower()]
         token = token.split("#")[1]
         tokens_with_hashtag.extend(([a.lower() for a in self.hashtag_pattern.split(token) if a]))
-
+        tokens_with_hashtag.pop(0)
         return tokens_with_hashtag
 
     def parse_url_text(self, urls):
@@ -396,12 +404,9 @@ class Parse:
             url = self.split_url_pattern.findall(token)
             for i, elem in enumerate(url):
                 if 'www.' in elem:
-                    address = url[i].split('.', 1)
+                    address = url[i].split('.', 2)
                     url[i] = address[1]
-                    # url.insert(i, address[0])
                     to_return.extend([address[1]])
-            # to_return.extend(url)
-
         return to_return
 
     def parse_numbers(self, number_as_str, word_before, word_after):
@@ -575,95 +580,63 @@ class Parse:
 
         return tweet_to_return
 
+    def istitle_with_hyphen(self, token):
 
-    def istitle_with_hyphen(self,token):
-        
         if "-" in token:
             hyphen_index = token.find("-")
             before_hyphen = token[:hyphen_index]
             after_hyphen = token[hyphen_index:]
             if before_hyphen.istitle() and after_hyphen.istitle():
                 return True
-        
+
         return False
-            
-    def tes_func(self):
-
-        ###### hashtags #######
-        # s1 = "#IsAlpha123"
-        # s2 = "#Covid19"
-        # s3 = "#noWayYouKnow"
-        # s4 = "#PlayTheGuitar2015"
-        # print(self.parse_hashtag(s1))
-        # print(self.parse_hashtag(s2))
-        # print(self.parse_hashtag(s3))
-        # print(self.parse_hashtag(s4))
-
-        ###### checking hyphen ######
-        # s1 = "covid-19"
-        # s2 = "3434-585"
-        # s3 = "-19"
-        # print(self.parse_date(s1))
-        # print(self.parse_date(s2))
-        # print(self.parse_date(s3))
-
-        ######### checking parse_date #########
-
-        # s1 = "covid-19"
-        # s2 = "1990-12-1"
-        # s3 = "859.5.02"
-        # s4 = "11.5.94"
-        # s5 = "-56"
-        # s6= "-26"
-        # s6 = "16.5"
-        # print(self.parse_date(s1))
-        # print(self.parse_date(s2))
-        # print(self.parse_date(s3))
-        # print(self.parse_date(s4))
-        # print(self.parse_date(s5))
-
-        ###### checking capitals######
-        # self.check_if_capital("FirSt")
-        # self.check_if_capital("FirSt")
-        # self.check_if_capital("FirSt")
-        # self.check_if_capital("FirSt")
-        # self.check_if_capital("firST")
-        # self.check_if_capital("FIRST")
-        # self.check_if_capital("FIRST")
-        # self.check_if_capital("NBA")
-        # self.check_if_capital("NBA")
-        # self.check_if_capital("gsw")
-        # self.check_if_capital("GsW")
-
-        ###### checking numbers ######
-        # s1 = "-50.564564545"
-        # s2 = "50,466.55565656"
-        # s3 = r"3\5"
-        # s4 = "53.55"
-        # # s5 = "percent"
-        # # s6 = "PerCentage"
-        # s7 = "%"
-        # # s8 = "$"
-        # s9 = "5.23/4"
-        # # s10 = "1500"
-        # # s11 = "500k"
-        # num3 = re.findall("[-+]?[\d]+(?:\.\d+)?/[-+]?[\d]+(?:\.\d+)?"
-        #                   "|[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", s3)[0]
-        # print(num3)
-        # print(self.parse_numbers(s1, "$", None))
-
-        # print(self.parse_numbers(s2, None, "million"))
-        # print(self.parse_numbers(s2, None, "m"))
-        # print(self.parse_numbers(s2, "m", "m"))
-        # print(self.parse_numbers(num3, "$", "%"))
-        # print(self.parse_numbers(num3, "$", "million"))
-        # print(self.parse_numbers(s4, None, s5))
-        # print(self.parse_numbers(s4, s6, None))
-        # print(self.parse_numbers(s4, None, s7))
-        # print(self.parse_numbers(s2, None, None))
-        # print(self.parse_numbers(s10, "BiliOn", None))
-        # print(self.parse_numbers(s11, "BiliOn", None))
-
-        x = 9
 
 
+# from nltk.corpus import stopwords
+# from nltk.tokenize import word_tokenize
+# from document import Document
+#
+#
+# class Parse:
+#
+#     def __init__(self):
+#         self.stop_words = frozenset(stopwords.words('english'))
+#
+#     def parse_sentence(self, text):
+#         """
+#         This function tokenize, remove stop words and apply lower case for every word within the text
+#         :param text:
+#         :return:
+#         """
+#         text_tokens = word_tokenize(text)
+#         text_tokens_without_stopwords = [w.lower() for w in text_tokens if w not in self.stop_words]
+#         return text_tokens_without_stopwords
+#
+#     def parse_doc(self, doc_as_list):
+#         """
+#         This function takes a tweet document as list and break it into different fields
+#         :param doc_as_list: list re-presenting the tweet.
+#         :return: Document object with corresponding fields.
+#         """
+#         tweet_id = doc_as_list[0]
+#         tweet_date = doc_as_list[1]
+#         full_text = doc_as_list[2]
+#         url = doc_as_list[3]
+#         retweet_text = doc_as_list[4]
+#         retweet_url = doc_as_list[5]
+#         quote_text = doc_as_list[6]
+#         quote_url = doc_as_list[7]
+#         term_dict = {}
+#         tokenized_text = self.parse_sentence(full_text)
+#
+#         doc_length = len(tokenized_text)  # after text operations.
+#
+#         for term in tokenized_text:
+#             if term not in term_dict.keys():
+#                 term_dict[term] = 1
+#             else:
+#                 term_dict[term] += 1
+#
+#         document = Document(tweet_id, tweet_date, full_text, url, retweet_text, retweet_url, quote_text,
+#                             quote_url, term_dict, doc_length)
+#         return document

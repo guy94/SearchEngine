@@ -1,6 +1,7 @@
 import json
 import os
 
+import lsi
 import utils
 from parser_module import Parse
 
@@ -40,6 +41,14 @@ class Indexer:
         ######
         self.counter = 0
 
+        self.row_spicy = []
+        self.col_spicy = []
+        self.data_spicy = []
+        self.term_index_spicy = 0
+        self.docs_index_spicy = 0
+        self.lsi_term_to_row = {}
+        self.lsi_col_to_doc = {}
+
         ######
 
         if config.toStem:
@@ -59,18 +68,33 @@ class Indexer:
         indices_dict = document.location_dict
         max_freq_term = document.max_freq_term
         # Go over each term in the doc
+
+          # new doc
+        lsi.doc_to_bow(list(document_dictionary.keys()))
         for term in document_dictionary:
 
             try:
                 # Update inverted index and posting
                 if term not in self.inverted_idx:
                     self.inverted_idx[term] = [1, "", 0]
+                    self.lsi_term_to_row[term] = self.term_index_spicy
                     self.spell_dict[term] = 1
                     self.num_of_terms += 1
+                    self.term_index_spicy += 1
+                    ###################
+
+                    # self.row_spicy.append(self.term_index_spicy)  # new word
+                    # self.data_spicy.append(document_dictionary[term])  # add the tf to data list
+                    # self.col_spicy.append(self.docs_index_spicy)
 
                 else:
                     self.inverted_idx[term][0] += 1
                     self.spell_dict[term] += 1
+
+                    ###################
+                    # self.row_spicy.append(self.inverted_idx[term][3])  # existing word
+                    # self.data_spicy.append(document_dictionary[term])  # add the tf to data list
+                    # self.col_spicy.append(self.docs_index_spicy)
 
                 if term in indices_dict:
                     list_of_indices = indices_dict[term]
@@ -79,7 +103,8 @@ class Indexer:
                 term_freq = document_dictionary[term]
 
                 if term not in self.postingDict:
-                    self.postingDict[term] = [(int(document.tweet_id), document_dictionary[term], term_freq / max_freq_term)]
+                    self.postingDict[term] = [
+                        (int(document.tweet_id), document_dictionary[term], term_freq / max_freq_term)]
                     # list_of_indices)]
                     self.values_size += 1
 
@@ -99,6 +124,8 @@ class Indexer:
                     date_in_hours = self.date_diff(tweet_date)
 
                     self.docs_dict[document.tweet_id] = [document.doc_length, date_in_hours, max_freq_term]
+                    self.lsi_col_to_doc[self.docs_index_spicy] = document.tweet_id
+                    self.docs_index_spicy += 1
 
                 if len(self.postingDict) == Indexer.NUM_OF_TERMS_IN_POSTINGS:
                     # print(self.values_size)
@@ -110,6 +137,7 @@ class Indexer:
 
             except:
                 print("problem with term: {}".format(term))
+        #########################
 
         if self.is_last_doc:
             if len(self.postingDict) > 0:
@@ -118,6 +146,10 @@ class Indexer:
                 self.num_of_terms = 0
                 self.postingDict = {}
                 self.values_size = 0
+
+            utils.save_obj(self.lsi_term_to_row, "lsi_term_to_row")
+            utils.save_obj(self.lsi_col_to_doc, "lsi_col_to_doc")
+            lsi.lsi_model(self.inverted_idx)
 
     def dump_from_indexer_to_disk(self):
         sorted_keys_dict = {k: self.postingDict[k] for k in sorted(self.postingDict)}
@@ -472,7 +504,7 @@ class Indexer:
                 add_last = True
                 if self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0] in merged_dict and add_last:
                     add_last = False
-                    merged_dict[self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0]]\
+                    merged_dict[self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0]] \
                         .extend(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1])
 
                 if add_last:
@@ -481,7 +513,8 @@ class Indexer:
                             self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1]
                         values_size += len(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][1])
                     else:
-                        self.one_time_appearance_list.append(self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0])
+                        self.one_time_appearance_list.append(
+                            self.files_to_merge[posting_with_min_key][idx_in_min_key_posting][0])
 
                 index_list[posting_with_min_key] += 1
 

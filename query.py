@@ -1,6 +1,6 @@
 class query_object:
 
-    def __init__(self, query_dict, query_length, max_freq_term, location_dict=None):
+    def __init__(self, query_dict, query_length, max_freq_term, tokenized_text, location_dict=None):
         """
         :param query_dict: query_dict --> keeps the parsed query
         :param query_length: query_length
@@ -11,3 +11,4 @@ class query_object:
         self.query_length = query_length
         self.max_freq_term = max_freq_term
         self.location_dict = location_dict
+        self.tokenized_text = tokenized_text

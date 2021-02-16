@@ -10,13 +10,12 @@ class ReadFile:
         """
         This function is reading a parquet file contains several tweets
         The file location is given as a string as an input to this function.
+        :param read_corpus:
         :param file_name: string - indicates the path to the file we wish to read.
         :return: a dataframe contains tweets.
         """
-
         if not read_corpus:
             full_path = os.path.join(self.corpus_path, file_name)
-
         else:
             full_path = file_name
 

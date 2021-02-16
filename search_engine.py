@@ -28,15 +28,15 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
 
     corpus_list = r.read_corpus()
 
-    # for idx in range(len(corpus_list)):
-    documents_list = r.read_file(file_name=corpus_list[0], read_corpus=True)
-    for i in tqdm(range(2000)):
-        parsed_document = p.parse_doc(documents_list[i])
-        if i == 2000 - 1:
-            indexer.is_last_doc = True
-        indexer.add_new_doc(parsed_document)
-        number_of_documents += 1
-    indexer.is_last_doc = False
+    for idx in range(len(corpus_list)):
+        documents_list = r.read_file(file_name=corpus_list[idx], read_corpus=True)
+        for i in tqdm(range(len(documents_list))):
+            parsed_document = p.parse_doc(documents_list[i])
+            if i == len(documents_list) - 1 and idx == len(corpus_list) - 1:
+                indexer.is_last_doc = True
+            indexer.add_new_doc(parsed_document)
+            number_of_documents += 1
+        indexer.is_last_doc = False
     documents_list = []
 
     with open('spell_dict.json', 'w') as f:
@@ -57,13 +57,6 @@ def run_engine(corpus_path, output_path, stemming, queries, num_docs_to_retrieve
     pickle.dump(Parse.AMOUNT_OF_NUMBERS_IN_CORPUS, pickle_out)
     pickle.dump(indexer.dump_path, pickle_out)
     pickle_out.close()
-
-    # snapshot = tracemalloc.take_snapshot()
-    # top_stats = snapshot.statistics('lineno')
-    #
-    # print("[ Top 10 ]")
-    # for stat in top_stats[:10]:
-    #     print(stat)
 
 
 def load_index():
